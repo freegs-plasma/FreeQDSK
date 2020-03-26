@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York. Email: benjamin.
 SPDX-License-Identifier: MIT
 """
 
-from . import _fileutils
+from freeqdsk import _fileutils
 
 try:
     from io import StringIO

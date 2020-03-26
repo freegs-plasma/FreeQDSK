@@ -8,7 +8,7 @@ import numpy
 
 from io import StringIO
 
-from . import _geqdsk
+from freeqdsk import geqdsk
 
 def test_writeread():
     """
@@ -39,13 +39,13 @@ def test_writeread():
     output = StringIO()
 
     # Write to string
-    _geqdsk.write(data, output)
+    geqdsk.write(data, output)
     
     # Move to the beginning of the buffer
     output.seek(0)
         
     # Read from string
-    data2 = _geqdsk.read(output)
+    data2 = geqdsk.read(output)
     
     # Check that data and data2 are the same
     for key in data:

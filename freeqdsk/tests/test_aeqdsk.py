@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 import numpy
 from io import StringIO
 
-from . import _aeqdsk
+from freeqdsk import aeqdsk
 
 def test_writeread():
     """
@@ -97,13 +97,13 @@ def test_writeread():
     output = StringIO()
 
     # Write to string
-    _aeqdsk.write(data, output)
+    aeqdsk.write(data, output)
 
     # Move to the beginning of the buffer
     output.seek(0)
         
     # Read from string
-    data2 = _aeqdsk.read(output)
+    data2 = aeqdsk.read(output)
     
     # Check that data and data2 are the same
     for key in data:
