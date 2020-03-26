@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 """
 
 from datetime import date
-from numpy import zeros, linspace, pi
+from numpy import zeros, pi
 
 from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
 
