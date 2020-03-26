@@ -8,6 +8,9 @@ version_dict = {}
 with open("freeqdsk/_version.py") as f:
     exec(f.read(), version_dict)
 
+with open("requirements.txt") as f:
+    requirements = f.read().splitlines()
+
 name = "freeqdsk"
 version = version_dict["__version__"]
 release = version
@@ -22,7 +25,8 @@ setup(
     # url="https://github.com/bendudson/freegs",
     description="GEQDSK and AEQDSK tokamak equilibrium file reader/writer",
     long_description=long_description,
-    install_requires=["numpy>=1.8"],
+    install_requires=requirements,
+    extras_require={"tests": ["pytest >= 3.3.0"],},
     platforms="any",
     classifiers=[
         "Programming Language :: Python",
