@@ -6,11 +6,7 @@ SPDX-License-Identifier: MIT
 
 from freeqdsk import _fileutils
 
-try:
-    from io import StringIO
-except:
-    # Python 2
-    from StringIO import StringIO
+from io import StringIO
 
 
 def test_f2s():
