@@ -234,9 +234,9 @@ def write(data, fh):
     """
     data  [dict] - keys are given with documentation in the `fields` list.
         Also includes
-         shot [int] - The shot number 
+         shot [int] - The shot number
     time  - in ms
-    
+
     """
     # First line identification string
     # Default to date > 1997 since that format includes nsilop etc.

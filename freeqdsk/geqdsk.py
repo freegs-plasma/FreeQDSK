@@ -16,7 +16,7 @@ from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
 def write(data, fh, label=None, shot=None, time=None):
     """
     Write a GEQDSK equilibrium file, given a dictionary of data
-    
+
     data - dictionary
       nx, ny        Number of points in R (x), Z (y)
       rdim, zdim    Sizes of the R,Z dimensions
@@ -27,16 +27,16 @@ def write(data, fh, label=None, shot=None, time=None):
       rmagx, zmagx  R,Z at magnetic axis (O-point)
       simagx        Poloidal flux psi at magnetic axis
       sibdry        Poloidal flux psi at plasma boundary
-      cpasma        Plasma current [Amps]   
+      cpasma        Plasma current [Amps]
 
       fpol          1D array of f(psi)=R*Bt  [meter-Tesla]
       pres          1D array of p(psi) [Pascals]
       qpsi          1D array of q(psi)
-      
+
       psi           2D array (nx,ny) of poloidal flux
-    
+
     fh - file handle
-    
+
     label - Text label to put in the file
     """
 
@@ -157,7 +157,7 @@ def write(data, fh, label=None, shot=None, time=None):
 def read(fh, cocos=1):
     """
     Read a G-EQDSK formatted equilibrium file
-    
+
     Format is specified here:
     https://fusion.gat.com/theory/Efitgeqdsk
 
@@ -167,7 +167,7 @@ def read(fh, cocos=1):
 
     Returns
     -------
-    
+
     A dictionary containing:
       nx, ny        Number of points in R (x), Z (y)
       rdim, zdim    Sizes of the R,Z dimensions
@@ -178,14 +178,14 @@ def read(fh, cocos=1):
       rmagx, zmagx  R,Z at magnetic axis (O-point)
       simagx        Poloidal flux psi at magnetic axis
       sibdry        Poloidal flux psi at plasma boundary
-      cpasma        Plasma current [Amps]   
+      cpasma        Plasma current [Amps]
 
       fpol          1D array of f(psi)=R*Bt  [meter-Tesla]
       pres          1D array of p(psi) [Pascals]
       qpsi          1D array of q(psi)
-      
+
       psi           2D array (nx,ny) of poloidal flux
-    
+
     """
 
     # Read the first line

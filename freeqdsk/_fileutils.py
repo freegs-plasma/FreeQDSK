@@ -40,12 +40,12 @@ class ChunkOutput:
     def write(self, value):
         """"
         Write a value to the output, adding a newline if needed
-        
+
         Distinguishes between:
         - list  : Iterates over the list and writes each element
         - int   : Converts using str
         - float : Converts using f2s to Fortran-formatted string
-        
+
         """
         if isinstance(value, list):
             for elt in value:
@@ -114,10 +114,10 @@ def write_2d(val, out):
 def next_value(fh):
     """
     A generator which yields values from a file handle
-    
+
     Checks if the value is a float or int, returning
     the correct type depending on if '.' is in the string
-    
+
     """
     pattern = re.compile(r"[ +\-]?\d+(?:\.\d+[Ee][\+\-]\d\d)?")
 
