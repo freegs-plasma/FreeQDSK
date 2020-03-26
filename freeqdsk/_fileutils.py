@@ -1,6 +1,10 @@
 """
 Utilities for writing and reading files compatible with Fortran
 
+SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+
+SPDX-License-Identifier: MIT
+
 """
 
 import re

@@ -2,6 +2,10 @@
 
 fields - Lists the variables stored in the file, a default value, and a description
 
+SPDX-FileCopyrightText: © 2020 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+
+SPDX-License-Identifier: MIT
+
 """
 
 from . import _fileutils as fu
