@@ -2,13 +2,14 @@
 
 fields - Lists the variables stored in the file, a default value, and a description
 
-SPDX-FileCopyrightText: © 2020 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+SPDX-FileCopyrightText: © 2020 Ben Dudson, University of York.
 
 SPDX-License-Identifier: MIT
 
 """
 
 from . import _fileutils as fu
+from textwrap import dedent
 
 import warnings
 
@@ -38,7 +39,12 @@ fields = [
     (
         "betap",
         1.0,
-        "poloidal beta with normalization average poloidal magnetic BPOLAV defined through Ampere's law",
+        dedent(
+            """\
+            poloidal beta with normalization average poloidal magnetic BPOLAV defined
+            through Ampere's law
+            """
+        ),
     ),
     (
         "ali",
@@ -107,7 +113,12 @@ fields = [
     (
         "xndnt",
         0.0,
-        "vertical stability parameter, vacuum field index normalized to critical index value",
+        dedent(
+            """\
+            vertical stability parameter, vacuum field index normalized to critical
+            index value
+            """
+        ),
     ),
     ("rseps1", 1.0, "major radius of x point in cm"),
     ("zseps1", -1.0, ""),
@@ -123,7 +134,12 @@ fields = [
     (
         "seplim",
         0.0,
-        "> 0 for minimum gap in cm in divertor configurations, < 0 absolute value for minimum distance to external separatrix in limiter configurations",
+        dedent(
+            """\
+            > 0 for minimum gap in cm in divertor configurations, < 0 absolute value for
+            minimum distance to external separatrix in limiter configurations
+            """
+        ),
     ),
     ("rmagx", 100.0, "major radius in cm at magnetic axis"),
     ("zmagx", 0.0, ""),
@@ -205,7 +221,12 @@ fields = [
     (
         "cjor0",
         0.0,
-        "normalized flux surface average current density at 99% of normalized poloidal flux",
+        dedent(
+            """\
+            normalized flux surface average current density at 99% of normalized
+            poloidal flux
+            """
+        ),
     ),
     ("fexpan", 0.0, "flux expansion at x point"),
     ("qqmin", 0.0, "minimum safety factor qmin"),
@@ -223,7 +244,12 @@ fields = [
     (
         "cj1ave",
         0.0,
-        "normalized average current density in plasma outer 5% normalized poloidal flux region",
+        dedent(
+            """\
+            normalized average current density in plasma outer 5% normalized poloidal
+            flux region
+            """
+        ),
     ),
     ("rmidin", 0.0, "inner major radius in m at Z=0.0"),
     ("rmidout", 0.0, "outer major radius in m at Z=0.0"),
@@ -252,7 +278,8 @@ def write(data, fh):
     # time(jj),jflag(jj),lflag,limloc(jj), mco2v,mco2r,qmflag
     #   jflag = 0 if error  (? Seems to contradict example)
     #   lflag > 0 if error  (? Seems to contradict example)
-    #   limloc  IN/OUT/TOP/BOT: limiter inside/outside/top/bot SNT/SNB: single null top/bottom DN: double null
+    #   limloc  IN/OUT/TOP/BOT: limiter inside/outside/top/bot SNT/SNB: single null
+    #       top/bottom DN: double null
     #   mco2v   number of vertical CO2 density chords
     #   mco2r   number of radial CO2 density chords
     #   qmflag  axial q(0) flag, FIX if constrained and CLC for float
@@ -271,7 +298,8 @@ def write(data, fh):
     with fu.ChunkOutput(fh, chunksize=4) as output:
         for key, default, description in fields:
             if callable(default):
-                # Replace the default function with the value, which may depend on previously read data
+                # Replace the default function with the value, which may depend on
+                # previously read data
                 default = default(data)
 
             if key is None:

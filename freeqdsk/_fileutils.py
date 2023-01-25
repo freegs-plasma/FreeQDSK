@@ -1,7 +1,7 @@
 """
 Utilities for writing and reading files compatible with Fortran
 
-SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 
 SPDX-License-Identifier: MIT
 
@@ -38,7 +38,7 @@ class ChunkOutput:
         self.extraspaces = extraspaces
 
     def write(self, value):
-        """"
+        """
         Write a value to the output, adding a newline if needed
 
         Distinguishes between:
@@ -83,8 +83,7 @@ class ChunkOutput:
         return self
 
     def __exit__(self, type, value, traceback):
-        """Ensure that the chunk finishes with a new line
-        """
+        """Ensure that the chunk finishes with a new line"""
         if self.counter != 0:
             self.counter = 0
             self.fh.write("\n")
@@ -117,9 +116,8 @@ def next_value(fh):
 
     Checks if the value is a float or int, returning
     the correct type depending on if '.' is in the string
-
     """
-    pattern = re.compile(r"[ +\-]?\d+(?:\.\d+[Ee][\+\-]\d\d)?")
+    pattern = re.compile(r"[ +\-]?\d+(?:\.\d+(?:[Ee][\+\-]\d\d)?)?")
 
     # Go through each line, extract values, then yield them one by one
     for line in fh:

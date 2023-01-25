@@ -1,0 +1,54 @@
+[project]
+name = "freeqdsk"
+description = "GEQDSK and AEQDSK tokamak equilibrium file reader/writer"
+readme = "README.md"
+authors = [
+    {name = "Ben Dudson"},
+    {name = "Peter Hill"},
+]
+license = {file = "LICENSE"}
+dynamic = ["version"]
+keywords = ["GEQDSK", "AEQDSK", "plasma", "equilibrium"]
+classifiers = [
+    "Programming Language :: Python",
+    "Development Status :: 3 - Alpha",
+    "Natural Language :: English",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+requires-python = ">=3.8"
+dependencies = [
+    "numpy >= 1.8"
+]
+
+[project.optional-dependencies]
+tests = [
+    "pytest >= 3.3.0",
+    "pytest-cov",
+]
+dev = [
+    "flake8",
+    "black",
+]
+
+[project.urls]
+Source = "https://github.com/PlasmaFAIR/FreeQDSK"
+Tracker = "https://github.com/PlasmaFAIR/FreeQDSK/issues"
+
+[build-system]
+requires = [
+    "setuptools >= 65",
+    "setuptools_scm[toml] >= 6.2",
+    "setuptools_scm_git_archive",
+    "wheel >= 0.29.0",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "freeqdsk/_version.py"
+git_describe_command = "git describe --dirty --tags --long --match v* --first-parent"

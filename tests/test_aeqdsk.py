@@ -1,5 +1,5 @@
 """
-SPDX-FileCopyrightText: © 2020 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+SPDX-FileCopyrightText: © 2020 Ben Dudson, University of York.
 
 SPDX-License-Identifier: MIT
 """
