@@ -1,7 +1,7 @@
 """
 Low level routines for reading and writing G-EQDSK files
 
-SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 
 SPDX-License-Identifier: MIT
 
@@ -194,7 +194,6 @@ def read(fh, cocos=1):
     if len(words) < 3:
         raise ValueError("Expecting at least 3 numbers on first line")
 
-    idum = int(words[-3])
     nx = int(words[-2])
     ny = int(words[-1])
 

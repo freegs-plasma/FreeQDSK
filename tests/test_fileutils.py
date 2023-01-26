@@ -1,5 +1,5 @@
 """
-SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 
 SPDX-License-Identifier: MIT
 """
@@ -23,8 +23,15 @@ def test_ChunkOutput():
     for val in [1.0, -3.2, 6.2e5, 8.7654e-12, 42.0, -76]:
         co.write(val)
 
-    assert (
-        output.getvalue()
-        == """ 1.000000000E+00-3.200000000E+00 6.200000000E+05 8.765400000E-12 4.200000000E+01
-   -76"""
+    expected = "".join(
+        [
+            " 1.000000000E+00",
+            "-3.200000000E+00",
+            " 6.200000000E+05",
+            " 8.765400000E-12",
+            " 4.200000000E+01",
+            "\n   -76",
+        ]
     )
+
+    assert output.getvalue() == expected
