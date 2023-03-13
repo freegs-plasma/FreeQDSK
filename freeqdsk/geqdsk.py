@@ -6,38 +6,81 @@ SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 SPDX-License-Identifier: MIT
 
 """
+from __future__ import annotations  # noqa
 
 from datetime import date
-from numpy import zeros, pi
+from typing import Dict, Optional, TextIO, Union
+
+import numpy as np
+from numpy.typing import ArrayLike
 
 from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
 
 
-def write(data, fh, label=None, shot=None, time=None):
-    """
-    Write a GEQDSK equilibrium file, given a dictionary of data
+def write(
+    data: Dict[str, Union[int, float, ArrayLike]],
+    fh: TextIO,
+    label: Optional[str] = None,
+    shot: Optional[int] = None,
+    time: Optional[int] = None,
+) -> None:
+    r"""
+    Write a G-EQDSK equilibrium file, given a dictionary of data.
 
-    data - dictionary
-      nx, ny        Number of points in R (x), Z (y)
-      rdim, zdim    Sizes of the R,Z dimensions
-      rcentr        Reference value of R
-      bcentr        Vacuum toroidal magnetic field at rcentr
-      rleft         R at left (inner) boundary
-      zmid          Z at middle of domain
-      rmagx, zmagx  R,Z at magnetic axis (O-point)
-      simagx        Poloidal flux psi at magnetic axis
-      sibdry        Poloidal flux psi at plasma boundary
-      cpasma        Plasma current [Amps]
+    Parameters
+    ----------
+    data: Dict[str, Union[int, float, ArrayLike]]
+        G-EQDSK data to write. See the 'Notes' section below for info.
+    fh: TextIO
+        File handle to write to. Should be opened in a text write mode, i.e.
+        ``open(filename, "w")``.
+    label: Optional[str], default None
+        Text label to put in the file. Defaults to 'FREEGS' if not provided.
+    shot: Optional[int], default None
+        Shot number to put in the file. Defaults to 0 if not provided.
+    time: Optional[int], default None
+        Time in milliseconds to put in the file. Defaults to 0 if not provided.
 
-      fpol          1D array of f(psi)=R*Bt  [meter-Tesla]
-      pres          1D array of p(psi) [Pascals]
-      qpsi          1D array of q(psi)
+    Notes
+    -----
 
-      psi           2D array (nx,ny) of poloidal flux
+    The data dictionary should contain the following:
 
-    fh - file handle
+    ======= ========================================================================
+    nx      Number of points in the R direction, int
+    ny      Number of points in the Z direction, int
+    rcentr  Reference value of R, float [meter]
+    bcentr  Vacuum toroidal magnetic field at rcentr, float [tesla]
+    rleft   R at left (inner) boundary, float [meter]
+    zmid    Z at middle of domain, float [meter]
+    rmagx   R at magnetic axis (0-point), float [meter]
+    zmagx   Z at magnetic axis (0-point), float [meter]
+    simagx  Poloidal flux :math:`\psi` at magnetic axis, float [weber / radian]
+    sibdry  Poloidal flux :math:`\psi` at plasma boundary, float [weber / radian]
+    cpasma  Plasma current, float [ampere]
+    fpol    Poloidal current function :math:`F(\psi)=RB_t`, 1D array [meter * tesla]
+    pres    Plasma pressure :math:`p(\psi)`, 1D array [pascal]
+    qpsi    Safety factor :math:`q(\psi)`, 1D array [dimensionless]
+    psi     Poloidal flux :math:`\psi`, 2D array [weber / radian]
+    ======= ========================================================================
 
-    label - Text label to put in the file
+    The 1D arrays should be the same length, and are defined on a linear :math:`\psi`
+    grid given by ``np.linspace(simagx, sibdry, nx)``. The following additional data
+    may also be included:
+
+    ======= ========================================================================
+    ffprime :math:`FF'(\psi)=RB_t`, 1D array [meter**2 * tesla**2 * radian / weber]
+    pprime  :math:`p'(\psi)`, 1D array [pascal * radian / weber]
+    rbdry   R of boundary points, 1D array [meter]
+    zbdry   Z of boundary points, 1D array [meter]
+    rlim    R of limiter point, 1D array [meter]
+    zlim    Z of limiter point, 1D array [meter]
+    ======= ========================================================================
+
+    The arrays ``ffprime`` and ``pprime`` are defined on the same 1D grid as in the
+    previous table. ``rbdry`` and ``zbdry`` may be a different length, but must be the
+    same length as each other. Similarly, ``rlim`` and ``zlim`` must have the same
+    length as each other.
     """
 
     nx = data["nx"]
@@ -111,7 +154,7 @@ def write(data, fh, label=None, shot=None, time=None):
     # fill arrays
     # Lukas Kripner (16/10/2018): uncommenting this, since you left there
     # check for data existence bellow. This seems to as safer variant.
-    workk = zeros([nx])
+    workk = np.zeros([nx])
 
     # Write arrays
     co = ChunkOutput(fh)
@@ -154,38 +197,56 @@ def write(data, fh, label=None, shot=None, time=None):
         co.newline()
 
 
-def read(fh, cocos=1):
-    """
-    Read a G-EQDSK formatted equilibrium file
+def read(fh: TextIO, cocos: int = 1) -> Dict[str, Union[int, float, np.ndarray]]:
+    r"""
+    Read a G-EQDSK formatted equilibrium file.
+    The format is specified `here <https://fusion.gat.com/theory/Efitgeqdsk>`_.
 
-    Format is specified here:
-    https://fusion.gat.com/theory/Efitgeqdsk
+    Parameters
+    ----------
 
-    cocos   - COordinate COnventions. Not fully handled yet,
-              only whether psi is divided by 2pi or not.
-              if < 10 then psi is divided by 2pi, otherwise not.
+    fh: TextIO
+        File handle to write to. Should be opened in a text read mode, i.e.
+        ``open(filename, "r")``.
+    cocos: int, default 1
+        COordinate COnventionS. This feature is not fully handled yet, and only
+        determines whether psi is divided by :math:`2\pi` or not. If ``cocos >= 10``,
+        :math:`\psi` is divided by :math:`2\pi`, and otherwise it is left unchanged.
+        See `Sauter et al, 2013 <https://doi.org/10.1016/j.cpc.2012.09.010>`_.
 
     Returns
     -------
+    Dict[str, Union[int, float, np.ndarray]]
+        See the Notes section for details.
 
-    A dictionary containing:
-      nx, ny        Number of points in R (x), Z (y)
-      rdim, zdim    Sizes of the R,Z dimensions
-      rcentr        Reference value of R
-      bcentr        Vacuum toroidal magnetic field at rcentr
-      rleft         R at left (inner) boundary
-      zmid          Z at middle of domain
-      rmagx, zmagx  R,Z at magnetic axis (O-point)
-      simagx        Poloidal flux psi at magnetic axis
-      sibdry        Poloidal flux psi at plasma boundary
-      cpasma        Plasma current [Amps]
+    Notes
+    -----
 
-      fpol          1D array of f(psi)=R*Bt  [meter-Tesla]
-      pres          1D array of p(psi) [Pascals]
-      qpsi          1D array of q(psi)
+    The resulting dictionary contains the following:
 
-      psi           2D array (nx,ny) of poloidal flux
-
+    ======= ========================================================================
+    nx      Number of points in the R direction, int
+    ny      Number of points in the Z direction, int
+    rcentr  Reference value of R, float [meter]
+    bcentr  Vacuum toroidal magnetic field at rcentr, float [tesla]
+    rleft   R at left (inner) boundary, float [meter]
+    zmid    Z at middle of domain, float [meter]
+    rmagx   R at magnetic axis (0-point), float [meter]
+    zmagx   Z at magnetic axis (0-point), float [meter]
+    simagx  Poloidal flux :math:`\psi` at magnetic axis, float [weber / radian]
+    sibdry  Poloidal flux :math:`\psi` at plasma boundary, float [weber / radian]
+    cpasma  Plasma current, float [ampere]
+    fpol    Poloidal current function :math:`F(\psi)=RB_t`, 1D array [meter * tesla]
+    pres    Plasma pressure :math:`p(\psi)`, 1D array [pascal]
+    qpsi    Safety factor :math:`q(\psi)`, 1D array [dimensionless]
+    psi     Poloidal flux :math:`\psi`, 2D array [weber / radian]
+    ffprime :math:`FF'(\psi)=RB_t`, 1D array [meter**2 * tesla**2 * radian / weber]
+    pprime  :math:`p'(\psi)`, 1D array [pascal * radian / weber]
+    rbdry   R of boundary points, 1D array [meter]
+    zbdry   Z of boundary points, 1D array [meter]
+    rlim    R of limiter point, 1D array [meter]
+    zlim    Z of limiter point, 1D array [meter]
+    ======= ========================================================================
     """
 
     # Read the first line
@@ -239,7 +300,7 @@ def read(fh, cocos=1):
         """
         Read a 1D array of length n
         """
-        val = zeros(n)
+        val = np.zeros(n)
         for i in range(n):
             val[i] = next(values)
         return val
@@ -248,7 +309,7 @@ def read(fh, cocos=1):
         """
         Read a 2D (n,m) array in Fortran order
         """
-        val = zeros([n, m])
+        val = np.zeros([n, m])
         for y in range(m):
             for x in range(n):
                 val[x, y] = next(values)
@@ -266,7 +327,7 @@ def read(fh, cocos=1):
     # Ensure that psi is divided by 2pi
     if cocos > 10:
         for var in ["psi", "simagx", "sibdry"]:
-            data[var] /= 2 * pi
+            data[var] /= 2 * np.pi
 
     nbdry = next(values)
     nlim = next(values)
@@ -276,16 +337,16 @@ def read(fh, cocos=1):
     if nbdry > 0:
         # Read (R,Z) pairs
         print(nbdry)
-        data["rbdry"] = zeros(nbdry)
-        data["zbdry"] = zeros(nbdry)
+        data["rbdry"] = np.zeros(nbdry)
+        data["zbdry"] = np.zeros(nbdry)
         for i in range(nbdry):
             data["rbdry"][i] = next(values)
             data["zbdry"][i] = next(values)
 
     if nlim > 0:
         # Read (R,Z) pairs
-        data["rlim"] = zeros(nlim)
-        data["zlim"] = zeros(nlim)
+        data["rlim"] = np.zeros(nlim)
+        data["zlim"] = np.zeros(nlim)
         for i in range(nlim):
             data["rlim"][i] = next(values)
             data["zlim"][i] = next(values)

@@ -6,39 +6,57 @@ SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 SPDX-License-Identifier: MIT
 
 """
+from __future__ import annotations  # noqa
 
 import re
+from typing import Any, Generator, Iterable, List, TextIO, Union
+
+import numpy as np
+from numpy.typing import ArrayLike
 
 
-def f2s(f):
+def f2s(f: float) -> str:
+    r"""
+    Format a string containing a float.
+
+    Positive floats require a extra space in front to ensure that positive and negative
+    values have the same width.
+
+    Parameters
+    ----------
+    f: float
+        A single float to be converted to a string.
+
+    Returns
+    -------
+    str
+        Converted string.
     """
-    Format a string containing a float
-    """
-    s = ""
-    if f >= 0.0:
-        s += " "
-    return s + "%1.9E" % f
+    return f"{' ' if f >= 0.0 else ''}{f:1.9E}"
 
 
 class ChunkOutput:
-    """
-    This outputs values in lines, inserting
-    newlines when needed.
+    r"""
+    Outputs values in lines, inserting newlines when needed.
+
+    Parameters
+    ---------
+    filehandle: TextIO
+        Output to write to.
+    chunksize: int, default 5
+        Number of values per line.
+    extraspaces: int, default 0
+        Number of extra spaces between outputs
     """
 
-    def __init__(self, filehandle, chunksize=5, extraspaces=0):
-        """
-        filehandle  output to write to
-        chunksize   number of values on a line
-        extraspaces  number of extra spaces between outputs
-        """
+    def __init__(self, filehandle: TextIO, chunksize: int = 5, extraspaces: int = 0):
         self.fh = filehandle
         self.counter = 0
         self.chunk = chunksize
         self.extraspaces = extraspaces
 
-    def write(self, value):
-        """
+    def write(self, value: Union[int, float, List[Any]]) -> None:
+        r"""
         Write a value to the output, adding a newline if needed
 
         Distinguishes between:
@@ -46,6 +64,11 @@ class ChunkOutput:
         - int   : Converts using str
         - float : Converts using f2s to Fortran-formatted string
 
+        Parameters
+        ----------
+        value: Union[int, float, List[Any]]
+            Either a single int or float, or a list to output. If provided with a list,
+            the function is called recursively on each element.
         """
         if isinstance(value, list):
             for elt in value:
@@ -55,7 +78,7 @@ class ChunkOutput:
         self.fh.write(" " * self.extraspaces)
 
         if isinstance(value, int):
-            self.fh.write("   " + str(value))
+            self.fh.write(f"   {value}")
         else:
             self.fh.write(f2s(value))
 
@@ -64,58 +87,95 @@ class ChunkOutput:
             self.fh.write("\n")
             self.counter = 0
 
-    def newline(self):
+    def newline(self) -> None:
         """
-        Ensure that the file is at the start of a new line
+        Ensure that the file is at the start of a new line. If the file is already
+        at a newline, does nothing.
         """
         if self.counter != 0:
-            self.fh.write("\n")
-            self.counter = 0
+            self.endblock()
 
-    def endblock(self):
+    def endblock(self) -> None:
         """
-        Make sure next block of data is on new line
+        Make sure next block of data is on new line.
         """
         self.fh.write("\n")
         self.counter = 0
 
     def __enter__(self):
+        """
+        Entry point for ``with`` statements.
+        """
         return self
 
-    def __exit__(self, type, value, traceback):
-        """Ensure that the chunk finishes with a new line"""
-        if self.counter != 0:
-            self.counter = 0
-            self.fh.write("\n")
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Exit point for ``with`` statements.
+
+        Ensures that the chunk finishes with a new line.
+        """
+        self.newline()
 
 
-def write_1d(val, out):
+def write_1d(values: Iterable[Any], out: ChunkOutput) -> None:
+    r"""
+    Writes a 1D variable to a ChunkOutput file handle.
+
+    Parameters
+    ----------
+    values: Iterable[Any]
+        List of values to write.
+    out: ChunkOutput
+       File handle managed by a ``ChunkOutput`` object.
     """
-    Writes a 1D variable val to the file handle out
-    """
-    for i in range(len(val)):
-        out.write(val[i])
+    for value in values:
+        out.write(value)
     out.newline()
 
 
-def write_2d(val, out):
+def write_2d(values: ArrayLike, out: ChunkOutput) -> None:
+    r"""
+    Writes a 2D array to a ChunkOutput file handle.
+
+    Note that this transposes the array, looping over the first index fastest
+
+    Parameters
+    ----------
+    values: ArrayLike
+        List of values to write.
+    out: ChunkOutput
+       File handle managed by a ``ChunkOutput`` object.
+
+    Raises
+    ------
+    ValueError
+        If values is not a 2D array.
     """
-    Writes a 2D array. Note that this transposes
-    the array, looping over the first index fastest
-    """
-    nx, ny = val.shape
+    # Alt: Check values is 2D, then write_1d(np.asarray(values).T.ravel(), out)
+    nx, ny = np.shape(values)
     for y in range(ny):
         for x in range(nx):
-            out.write(val[x, y])
+            out.write(values[x, y])
     out.newline()
 
 
-def next_value(fh):
+def next_value(fh: TextIO) -> Generator[Union[int, float], None, None]:
     """
-    A generator which yields values from a file handle
+    A generator which yields values from a file handle.
 
-    Checks if the value is a float or int, returning
-    the correct type depending on if '.' is in the string
+    Checks if the value is a float or int, returning the correct type depending on
+    whether '.' is in the string.
+
+    Parameters
+    ----------
+    fh: TextIO
+        File handle for text file to be read.
+
+    Yields
+    ------
+    Union[int, float]
+        Yields either an int or a float, depending on whether the string contains a
+        decimal point.
     """
     pattern = re.compile(r"[ +\-]?\d+(?:\.\d+(?:[Ee][\+\-]\d\d)?)?")
 
