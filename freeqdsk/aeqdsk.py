@@ -69,21 +69,17 @@ def fields() -> List[Field]:
         (
             "betap",
             1.0,
-            dedent(
-                """\
-                poloidal beta with normalization average poloidal magnetic BPOLAV\
-                defined through Ampere's law\
-                """
+            (
+                "poloidal beta with normalization average poloidal magnetic BPOLAV "
+                "defined through Ampere's law"
             ),
         ),
         (
             "ali",
             0.0,
-            dedent(
-                """\
-                li with normalization average poloidal magnetic defined through\
-                Ampere's law\
-                """
+            (
+                "li with normalization average poloidal magnetic defined through "
+                "Ampere's law"
             ),
         ),
         ("oleft", 10.0, "plasma inner gap in cm"),
@@ -148,11 +144,9 @@ def fields() -> List[Field]:
         (
             "xndnt",
             0.0,
-            dedent(
-                """\
-                vertical stability parameter, vacuum field index normalized to critical\
-                index value\
-                """
+            (
+                "vertical stability parameter, vacuum field index normalized to "
+                "critical index value"
             ),
         ),
         ("rseps1", 1.0, "major radius of x point in cm"),
@@ -169,12 +163,10 @@ def fields() -> List[Field]:
         (
             "seplim",
             0.0,
-            dedent(
-                """\
-                > 0 for minimum gap in cm in divertor configurations, < 0 absolute\
-                value for minimum distance to external separatrix in limiter\
-                configurations\
-                """
+            (
+                "> 0 for minimum gap in cm in divertor configurations, < 0 absolute "
+                "value for minimum distance to external separatrix in limiter "
+                "configurations"
             ),
         ),
         ("rmagx", 100.0, "major radius in cm at magnetic axis"),
@@ -261,11 +253,9 @@ def fields() -> List[Field]:
         (
             "cjor0",
             0.0,
-            dedent(
-                """\
-                normalized flux surface average current density at 99% of normalized\
-                poloidal flux\
-                """
+            (
+                "normalized flux surface average current density at 99% of normalized "
+                "poloidal flux"
             ),
         ),
         ("fexpan", 0.0, "flux expansion at x point"),
@@ -284,11 +274,9 @@ def fields() -> List[Field]:
         (
             "cj1ave",
             0.0,
-            dedent(
-                """\
-                normalized average current density in plasma outer 5% normalized\
-                poloidal flux region\
-                """
+            (
+                "normalized average current density in plasma outer 5% normalized "
+                "poloidal flux region"
             ),
         ),
         ("rmidin", 0.0, "inner major radius in m at Z=0.0"),
