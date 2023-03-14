@@ -9,4 +9,3 @@ Grad-Shafranov solver, or by fitting to experimental measurements.
 
 .. automethod:: freeqdsk.geqdsk.read
 .. automethod:: freeqdsk.geqdsk.write
-

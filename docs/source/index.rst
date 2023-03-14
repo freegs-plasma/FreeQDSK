@@ -16,8 +16,9 @@ FreeQDSK is adapted from FreeGS_, by Ben Dudson.
    :maxdepth: 2
    :caption: Contents:
 
-   _fileutils.rst
+   aeqdsk.rst
    geqdsk.rst
+   _fileutils.rst
 
 .. _FreeGS: https://github.com/freegs-plasma/freegs
 

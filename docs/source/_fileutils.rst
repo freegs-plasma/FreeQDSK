@@ -8,11 +8,10 @@ This reference material is intended for developers, and users are not recommende
 use these functions directly.
 
 .. autoclass:: freeqdsk._fileutils.ChunkOutput
-  :members:
-  :special-members:
+   :members:
+   :special-members:
 
 .. automethod:: freeqdsk._fileutils.f2s
 .. automethod:: freeqdsk._fileutils.write_1d
 .. automethod:: freeqdsk._fileutils.write_2d
 .. automethod:: freeqdsk._fileutils.next_value
-

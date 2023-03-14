@@ -17,6 +17,9 @@ from numpy.typing import ArrayLike
 from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
 
 
+# TODO: Documentation does not describe G-EQDSK header line
+
+
 def write(
     data: Dict[str, Union[int, float, ArrayLike]],
     fh: TextIO,
