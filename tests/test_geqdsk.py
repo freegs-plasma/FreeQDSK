@@ -15,8 +15,8 @@ def test_writeread():
     """
     Test that data can be written then read back
     """
-    nx = 65
-    ny = 65
+    nx = 69
+    ny = 69
 
     # Create a dummy dataset
     data = {

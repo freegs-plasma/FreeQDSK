@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations  # noqa
 
 import re
+from contextlib import contextmanager
 from typing import Any, Generator, Iterable, List, TextIO, Union
 
+import fortranformat as ff
 import numpy as np
 from numpy.typing import ArrayLike
 
@@ -187,3 +189,86 @@ def next_value(fh: TextIO) -> Generator[Union[int, float], None, None]:
                 yield float(match)
             else:
                 yield int(match)
+
+
+@contextmanager
+def _fortranformat_written_vars_only():
+    original = ff.config.RET_WRITTEN_VARS_ONLY
+    ff.config.RET_WRITTEN_VARS_ONLY = True
+    yield
+    ff.config.RET_WRITTEN_VARS_ONLY = original
+
+
+def read_array(
+    shape: Union[int, ArrayLike[int]],
+    fh: TextIO,
+    reader: Union[str, ff.FortranRecordReader],
+) -> np.ndarray:
+    r"""
+    Reads from a Fortran formatted ASCII data file. It is assumed that the array is
+    flattened and stored in Fortran order (column-major). Information is read from a
+    file handle until the requested array is filled.
+
+    Parameters
+    ---------
+    shape: Union[int, ArrayLike[int]]
+        The shape of the array to return. If provided as an int, a 1D array is returned
+        of length ``shape``.
+    fh: TextIO
+        File handle. Should be in a text read mode, i.e. ``open(filename, "r")``.
+    reader: Union[str, fortranformat.FortranRecordReader]
+        Either a Fortran format string passed as a string, such as ``'(5e16.9)'``, or
+        a FortranFormat reader object.
+
+    Returns
+    -------
+    np.ndarray
+        A filled NumPy array of the requested shape.
+
+    Raises
+    ------
+    ValueError
+        If ``shape`` is neither a scalar nor a 1D iterable.
+    """
+    shape = np.asanyarray(shape, dtype=int)
+    if isinstance(reader, str):
+        reader = ff.FortranRecordReader(reader)
+    if shape.ndim == 0:
+        return read_array((shape,), fh, reader)
+    elif shape.ndim == 1:
+        if len(shape) == 1:
+            with _fortranformat_written_vars_only():
+                result = []
+                while len(result) < shape[0]:
+                    result.extend(reader.read(fh.readline()))
+            return np.array(result)
+        else:
+            return read_array((np.prod(shape),), fh, reader).reshape(shape, order="F")
+    else:
+        raise ValueError("'shape' should be a scalar or a 1D array")
+
+
+def write_array(arr: ArrayLike, fh: TextIO, writer: ff.FortranRecordWriter) -> None:
+    r"""
+    Writes to a Fortran formatted ASCII data file. The provided array is flattened and
+    written in Fortran order (column-major). Information is written to a file handle
+    until the requested array is written. The file handle will be left on a newline.
+
+    Parameters
+    ---------
+    arr: ArrayLike
+        The array to write.
+    fh: TextIO
+        File handle. Should be in a text write mode, i.e. ``open(filename, "w")``.
+    writer: Union[str, fortranformat.FortranRecordWriter]
+        Either a Fortran format string passed as a string, such as ``'(5e16.9)'``, or
+        a FortranFormat writer object.
+    """
+    arr = np.asanyarray(arr)
+    if arr.ndim == 0:
+        write_array([arr], fh, writer)
+    elif arr.ndim == 1:
+        fh.write(writer.write(arr))
+        fh.write("\n")
+    else:
+        write_array(arr.ravel(order="F"), fh, writer)
