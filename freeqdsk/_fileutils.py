@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations  # noqa
 
 import re
+import warnings
 from contextlib import contextmanager
 from typing import Any, Generator, Iterable, List, TextIO, Union
 
@@ -200,7 +201,7 @@ def _fortranformat_written_vars_only():
 
 
 def read_array(
-    shape: Union[int, ArrayLike[int]],
+    shape: Union[int, str, ArrayLike],
     fh: TextIO,
     reader: Union[str, ff.FortranRecordReader],
 ) -> np.ndarray:
@@ -211,9 +212,10 @@ def read_array(
 
     Parameters
     ---------
-    shape: Union[int, ArrayLike[int]]
+    shape: Union[int, str, ArrayLike]
         The shape of the array to return. If provided as an int, a 1D array is returned
-        of length ``shape``.
+        of length ``shape``. If passed the string ``"all"``, will read until the end of
+        the file.
     fh: TextIO
         File handle. Should be in a text read mode, i.e. ``open(filename, "r")``.
     reader: Union[str, fortranformat.FortranRecordReader]
@@ -228,21 +230,64 @@ def read_array(
     Raises
     ------
     ValueError
-        If ``shape`` is neither a scalar nor a 1D iterable.
+        If ``shape`` is not a scalar, a 1D iterable, or the string ``"all"``. Also
+        raised if attempting to read a line which does not match the supplied format.
+    RuntimeError
+        If encountering end-of-file or a blank line while reading an array, and shape
+        if not ``"all"``
+
+    Warns
+    -----
+    UserWarning
+        When reading an array over multiple lines, raises a warning if the array reaches
+        the requested size but there are still elements on the last line. These elements
+        will be discarded, and the filehandle will move on the next line.
     """
+    # If shape is "all", re-run the function using a special tuple.
+    # This instructs the function to read until end-of-file and return an array of
+    # undetermined shape
+    shape_all = (-44379512921,)
+    if shape == "all":
+        return read_array(shape_all, fh, reader)
+
     shape = np.asanyarray(shape, dtype=int)
+    # Quit early if asking for empty array
+    if np.array_equal(shape, (0,)):
+        return np.array([])
+    # Create reader object if provided with raw format
     if isinstance(reader, str):
         reader = ff.FortranRecordReader(reader)
+
     if shape.ndim == 0:
+        # If given scalar, read 1D array with that length
         return read_array((shape,), fh, reader)
     elif shape.ndim == 1:
+        # Return array with given shape
         if len(shape) == 1:
+            # Read a 1D array and append to result list until finished
             with _fortranformat_written_vars_only():
                 result = []
-                while len(result) < shape[0]:
-                    result.extend(reader.read(fh.readline()))
+                if np.array_equal(shape, shape_all):
+                    # Read until EOF
+                    for line in fh.readlines():
+                        result.extend(reader.read(line))
+                else:
+                    while len(result) < shape[0]:
+                        line = fh.readline()
+                        if not line:
+                            raise RuntimeError(
+                                "Encountered a blank line or EOF while reading array"
+                            )
+                        result.extend(reader.read(line))
+                    if len(result) != shape[0]:
+                        warnings.warn(
+                            "Additional elements were detected beyond the end of the "
+                            "requested array. These have been discarded."
+                        )
+                        result = result[: shape[0]]
             return np.array(result)
         else:
+            # Read ND arrays as flattened 1D arrays, then reshape to requested shape
             return read_array((np.prod(shape),), fh, reader).reshape(shape, order="F")
     else:
         raise ValueError("'shape' should be a scalar or a 1D array")
@@ -265,10 +310,20 @@ def write_array(arr: ArrayLike, fh: TextIO, writer: ff.FortranRecordWriter) -> N
         a FortranFormat writer object.
     """
     arr = np.asanyarray(arr)
+    # Quit early if given empty array
+    if arr.size == 0:
+        return
+    # Create writer object if provided with raw format
+    if isinstance(writer, str):
+        writer = ff.FortranRecordWriter(writer)
+
     if arr.ndim == 0:
-        write_array([arr], fh, writer)
+        # If given scalar, convert to array of shape (1,)
+        write_array((arr,), fh, writer)
     elif arr.ndim == 1:
+        # Write 1D array using writer
         fh.write(writer.write(arr))
         fh.write("\n")
     else:
+        # If given ND array, flatten to 1D and write
         write_array(arr.ravel(order="F"), fh, writer)

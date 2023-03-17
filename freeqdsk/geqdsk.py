@@ -339,7 +339,7 @@ def read(
     data = {"nx": nx, "ny": ny}
 
     # Read first four lines
-    floats = read_array((20,), fh, data_reader)
+    floats = read_array(20, fh, data_reader)
     for key, value in zip(_float_keys, floats):
         # Skip dummy values
         if key is None:
@@ -354,12 +354,12 @@ def read(
         data[key] = value
 
     # Read grids
-    data["fpol"] = read_array((nx,), fh, data_reader)
-    data["pres"] = read_array((nx,), fh, data_reader)
-    data["ffprime"] = read_array((nx,), fh, data_reader)
-    data["pprime"] = read_array((nx,), fh, data_reader)
+    data["fpol"] = read_array(nx, fh, data_reader)
+    data["pres"] = read_array(nx, fh, data_reader)
+    data["ffprime"] = read_array(nx, fh, data_reader)
+    data["pprime"] = read_array(nx, fh, data_reader)
     data["psi"] = read_array((nx, ny), fh, data_reader)
-    data["qpsi"] = read_array((nx,), fh, data_reader)
+    data["qpsi"] = read_array(nx, fh, data_reader)
 
     # Ensure that psi is divided by 2pi
     if cocos > 10:
@@ -372,11 +372,11 @@ def read(
     data["nbdry"], data["nlim"] = nbdry, nlim
 
     if nbdry > 0:
-        bdry = read_array((2 * nbdry,), fh, data_reader)
+        bdry = read_array(2 * nbdry, fh, data_reader)
         data["rbdry"], data["zbdry"] = bdry[0::2], bdry[1::2]
 
     if nlim > 0:
-        lim = read_array((2 * nlim,), fh, data_reader)
+        lim = read_array(2 * nlim, fh, data_reader)
         data["rlim"], data["zlim"] = lim[0::2], lim[1::2]
 
     return data
