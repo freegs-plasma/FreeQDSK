@@ -200,11 +200,38 @@ def _fortranformat_written_vars_only():
     ff.config.RET_WRITTEN_VARS_ONLY = original
 
 
-def read_array(
-    shape: Union[int, str, ArrayLike],
-    fh: TextIO,
-    reader: Union[str, ff.FortranRecordReader],
-) -> np.ndarray:
+def read_line(fh: TextIO, fmt: str) -> List[Any]:
+    r"""
+    Reads a single line from a Fortran formatted ASCII data file. Advances the
+    file handle a single line.
+
+    Parameters
+    ---------
+    fh: TextIO
+        File handle. Should be in a text read mode, i.e. ``open(filename, "r")``.
+    fmt: str
+        A Fortran format string, such as ``'(6a8,3i4)'``
+
+    Returns
+    -------
+    List[Any]
+        A list of the data read from the line.
+
+    Raises
+    ------
+    ValueError
+        If attempting to read a line which does not match the supplied format.
+    RuntimeError
+        If reading a blank line or the file handle has reached the end of the file.
+    """
+    with _fortranformat_written_vars_only():
+        line = fh.readline()
+        if not line:
+            raise RuntimeError("Encountered a blank line or EOF while reading array")
+        return ff.FortranRecordReader(fmt).read(line)
+
+
+def read_array(shape: Union[int, str, ArrayLike], fh: TextIO, fmt: str) -> np.ndarray:
     r"""
     Reads from a Fortran formatted ASCII data file. It is assumed that the array is
     flattened and stored in Fortran order (column-major). Information is read from a
@@ -218,9 +245,8 @@ def read_array(
         the file.
     fh: TextIO
         File handle. Should be in a text read mode, i.e. ``open(filename, "r")``.
-    reader: Union[str, fortranformat.FortranRecordReader]
-        Either a Fortran format string passed as a string, such as ``'(5e16.9)'``, or
-        a FortranFormat reader object.
+    fmt: str
+        A Fortran format string, such as ``'(5e16.9)'``
 
     Returns
     -------
@@ -248,23 +274,21 @@ def read_array(
     # undetermined shape
     shape_all = (-44379512921,)
     if shape == "all":
-        return read_array(shape_all, fh, reader)
+        return read_array(shape_all, fh, fmt)
 
     shape = np.asanyarray(shape, dtype=int)
     # Quit early if asking for empty array
     if np.array_equal(shape, (0,)):
         return np.array([])
-    # Create reader object if provided with raw format
-    if isinstance(reader, str):
-        reader = ff.FortranRecordReader(reader)
 
     if shape.ndim == 0:
         # If given scalar, read 1D array with that length
-        return read_array((shape,), fh, reader)
+        return read_array((shape,), fh, fmt)
     elif shape.ndim == 1:
         # Return array with given shape
         if len(shape) == 1:
             # Read a 1D array and append to result list until finished
+            reader = ff.FortranRecordReader(fmt)
             with _fortranformat_written_vars_only():
                 result = []
                 if np.array_equal(shape, shape_all):
@@ -288,12 +312,30 @@ def read_array(
             return np.array(result)
         else:
             # Read ND arrays as flattened 1D arrays, then reshape to requested shape
-            return read_array((np.prod(shape),), fh, reader).reshape(shape, order="F")
+            return read_array((np.prod(shape),), fh, fmt).reshape(shape, order="F")
     else:
         raise ValueError("'shape' should be a scalar or a 1D array")
 
 
-def write_array(arr: ArrayLike, fh: TextIO, writer: ff.FortranRecordWriter) -> None:
+def write_line(data: Iterable[Any], fh: TextIO, fmt: str) -> None:
+    r"""
+    Writes to a Fortran formatted ASCII data file. The file handle will be left on a
+    newline.
+
+    Parameters
+    ---------
+    data: Iterable[Any]
+        The data to write.
+    fh: TextIO
+        File handle. Should be in a text write mode, i.e. ``open(filename, "w")``.
+    fmt: str
+        A Fortran IO format string, such as ``'(6a8,3i3)'``.
+    """
+    fh.write(ff.FortranRecordWriter(fmt).write(data))
+    fh.write("\n")
+
+
+def write_array(arr: ArrayLike, fh: TextIO, fmt: str) -> None:
     r"""
     Writes to a Fortran formatted ASCII data file. The provided array is flattened and
     written in Fortran order (column-major). Information is written to a file handle
@@ -305,25 +347,20 @@ def write_array(arr: ArrayLike, fh: TextIO, writer: ff.FortranRecordWriter) -> N
         The array to write.
     fh: TextIO
         File handle. Should be in a text write mode, i.e. ``open(filename, "w")``.
-    writer: Union[str, fortranformat.FortranRecordWriter]
-        Either a Fortran format string passed as a string, such as ``'(5e16.9)'``, or
-        a FortranFormat writer object.
+    fmt: str
+        A Fortran IO format string, such as ``'(5e16.9)'``.
     """
     arr = np.asanyarray(arr)
     # Quit early if given empty array
     if arr.size == 0:
         return
-    # Create writer object if provided with raw format
-    if isinstance(writer, str):
-        writer = ff.FortranRecordWriter(writer)
-
     if arr.ndim == 0:
         # If given scalar, convert to array of shape (1,)
-        write_array((arr,), fh, writer)
+        write_array((arr,), fh, fmt)
     elif arr.ndim == 1:
-        # Write 1D array using writer
-        fh.write(writer.write(arr))
+        # Write 1D array
+        fh.write(ff.FortranRecordWriter(fmt).write(arr))
         fh.write("\n")
     else:
         # If given ND array, flatten to 1D and write
-        write_array(arr.ravel(order="F"), fh, writer)
+        write_array(arr.ravel(order="F"), fh, fmt)

@@ -110,21 +110,20 @@ import warnings
 from datetime import date
 from typing import Dict, Optional, TextIO, Union
 
-import fortranformat as ff
 import numpy as np
 from numpy.typing import ArrayLike
 
-from ._fileutils import read_array, write_array
+from ._fileutils import read_array, read_line, write_array, write_line
 
 
 #: Default header contains comment, unknown int, nx, ny
-_header_format = "(a48,3i4)"
+_header_fmt = "(a48,3i4)"
 
 #: Default format for all float data
-_data_format = "(5e16.9)"
+_data_fmt = "(5e16.9)"
 
 #: Default format for line describing length of boundary and limiter arrays
-_bdry_lim_format = "(2i5)"
+_bdry_lim_fmt = "(2i5)"
 
 #: The labels assigned to floats on the first 4 lines after the header.
 #: 'None' indicates a blank space, which should be filled with 0.0.
@@ -158,9 +157,9 @@ def write(
     label: Optional[str] = None,
     shot: int = 0,
     time: int = 0,
-    header_format: Optional[str] = None,
-    data_format: Optional[str] = None,
-    bdry_lim_format: Optional[str] = None,
+    header_fmt: Optional[str] = None,
+    data_fmt: Optional[str] = None,
+    bdry_lim_fmt: Optional[str] = None,
 ) -> None:
     r"""
     Write a G-EQDSK equilibrium file, given a dictionary of data.
@@ -178,12 +177,12 @@ def write(
         Shot number to put in the file.
     time: int, default 0
         Time in milliseconds to put in the file.
-    header_format: Optional[str], default None
+    header_fmt: Optional[str], default None
         Fortran IO format for G-EQDSK header line. If not provided, uses ``(a48,3i4)``,
         corresponding to a comment, a dummy int, nx, and ny.
-    data_format: Optional[str], default None
+    data_fmt: Optional[str], default None
         Fortran IO format for G-EQDSK data. If not provided, uses ``(5e16.9)``.
-    bdr_lim_format: Optional[str], default None
+    bdr_lim_fmt: Optional[str], default None
         Fortran IO format specifying the lengths of the boundary/limiter grids. If
         not provided, defaults to ``(2i5)``
 
@@ -203,15 +202,12 @@ def write(
     set to zero if these aren't found. Similarly, if ``nx`` or ``ny`` are excluded, they
     are inferred from ``psi``, which should have the shape ``(nx, ny)``.
     """
-    if header_format is None:
-        header_format = _header_format
-    if data_format is None:
-        data_format = _data_format
-    if bdry_lim_format is None:
-        bdry_lim_format = _bdry_lim_format
-    header_writer = ff.FortranRecordWriter(header_format)
-    data_writer = ff.FortranRecordWriter(data_format)
-    bdry_lim_writer = ff.FortranRecordWriter(bdry_lim_format)
+    if header_fmt is None:
+        header_fmt = _header_fmt
+    if data_fmt is None:
+        data_fmt = _data_fmt
+    if bdry_lim_fmt is None:
+        bdry_lim_fmt = _bdry_lim_fmt
 
     # Get dimensions and check data is correct
     nx = data.get("nx", np.shape(data["psi"])[0])
@@ -259,39 +255,39 @@ def write(
     comment = f"{label:11}{creation_date:10s}   {shot_str:>8s}{time_str:16s}"
 
     idum = 3  # No idea what the third-to-last int is, here it is set to 3
-    fh.write(header_writer.write((comment, idum, nx, ny)) + "\n")
+    write_line((comment, idum, nx, ny), fh, header_fmt)
 
     # The next four lines contain floats in the order specified by _float_keys
     # If an entry in _float_keys is None, that float is a dummy value and is set to 0.0
     floats = [(0.0 if k is None else data[k]) for k in _float_keys]
-    write_array(floats, fh, data_writer)
+    write_array(floats, fh, data_fmt)
 
     # Write each grid
-    write_array(data["fpol"], fh, data_writer)
-    write_array(data["pres"], fh, data_writer)
-    write_array(data.get("ffprime", np.zeros(nx)), fh, data_writer)
-    write_array(data.get("pprime", np.zeros(nx)), fh, data_writer)
-    write_array(data["psi"], fh, data_writer)
-    write_array(data["qpsi"], fh, data_writer)
+    write_array(data["fpol"], fh, data_fmt)
+    write_array(data["pres"], fh, data_fmt)
+    write_array(data.get("ffprime", np.zeros(nx)), fh, data_fmt)
+    write_array(data.get("pprime", np.zeros(nx)), fh, data_fmt)
+    write_array(data["psi"], fh, data_fmt)
+    write_array(data["qpsi"], fh, data_fmt)
 
     # Boundary / limiters
-    write_array((nbdry, nlim), fh, bdry_lim_writer)
+    write_array((nbdry, nlim), fh, bdry_lim_fmt)
     if nbdry > 0:
         bdry = np.empty(2 * nbdry)
         bdry[0::2], bdry[1::2] = data["rbdry"], data["zbdry"]
-        write_array(bdry, fh, data_writer)
+        write_array(bdry, fh, data_fmt)
     if nlim > 0:
         lim = np.empty(2 * nlim)
         lim[0::2], lim[1::2] = data["rlim"], data["zlim"]
-        write_array(lim, fh, data_writer)
+        write_array(lim, fh, data_fmt)
 
 
 def read(
     fh: TextIO,
     cocos: int = 1,
-    header_format: Optional[str] = None,
-    data_format: Optional[str] = None,
-    bdry_lim_format: Optional[str] = None,
+    header_fmt: Optional[str] = None,
+    data_fmt: Optional[str] = None,
+    bdry_lim_fmt: Optional[str] = None,
 ) -> Dict[str, Union[int, float, np.ndarray]]:
     r"""
     Read a G-EQDSK formatted equilibrium file.
@@ -308,12 +304,12 @@ def read(
         determines whether psi is divided by :math:`2\pi` or not. If ``cocos >= 10``,
         :math:`\psi` is divided by :math:`2\pi`, and otherwise it is left unchanged.
         See `Sauter et al, 2013 <https://doi.org/10.1016/j.cpc.2012.09.010>`_.
-    header_format: Optional[str], default None
+    header_fmt: Optional[str], default None
         Fortran IO format for G-EQDSK header line. If not provided, uses ``(a48,3i4)``,
         corresponding to a comment, a dummy int, nx, and ny.
-    data_format: Optional[str], default None
+    data_fmt: Optional[str], default None
         Fortran IO format for G-EQDSK data. If not provided, uses ``(5e16.9)``.
-    bdr_lim_format: Optional[str], default None
+    bdr_lim_fmt: Optional[str], default None
         Fortran IO format specifying the lengths of the boundary/limiter grids. If
         not provided, defaults to ``(2i5)``
 
@@ -322,24 +318,21 @@ def read(
     Dict[str, Union[int, float, np.ndarray]]
         Dict of G-EQDSK data.
     """
-    if header_format is None:
-        header_format = _header_format
-    if data_format is None:
-        data_format = _data_format
-    if bdry_lim_format is None:
-        bdry_lim_format = _bdry_lim_format
-    header_reader = ff.FortranRecordReader(header_format)
-    data_reader = ff.FortranRecordReader(data_format)
-    bdry_lim_reader = ff.FortranRecordReader(bdry_lim_format)
+    if header_fmt is None:
+        header_fmt = _header_fmt
+    if data_fmt is None:
+        data_fmt = _data_fmt
+    if bdry_lim_fmt is None:
+        bdry_lim_fmt = _bdry_lim_fmt
 
     # TODO Should try to extract shot/time data from header comment
-    _, _, nx, ny = header_reader.read(fh.readline())
+    _, _, nx, ny = read_line(fh, header_fmt)
 
     # Dictionary to hold result
     data = {"nx": nx, "ny": ny}
 
     # Read first four lines
-    floats = read_array(20, fh, data_reader)
+    floats = read_array(20, fh, data_fmt)
     for key, value in zip(_float_keys, floats):
         # Skip dummy values
         if key is None:
@@ -354,12 +347,12 @@ def read(
         data[key] = value
 
     # Read grids
-    data["fpol"] = read_array(nx, fh, data_reader)
-    data["pres"] = read_array(nx, fh, data_reader)
-    data["ffprime"] = read_array(nx, fh, data_reader)
-    data["pprime"] = read_array(nx, fh, data_reader)
-    data["psi"] = read_array((nx, ny), fh, data_reader)
-    data["qpsi"] = read_array(nx, fh, data_reader)
+    data["fpol"] = read_array(nx, fh, data_fmt)
+    data["pres"] = read_array(nx, fh, data_fmt)
+    data["ffprime"] = read_array(nx, fh, data_fmt)
+    data["pprime"] = read_array(nx, fh, data_fmt)
+    data["psi"] = read_array((nx, ny), fh, data_fmt)
+    data["qpsi"] = read_array(nx, fh, data_fmt)
 
     # Ensure that psi is divided by 2pi
     if cocos > 10:
@@ -368,15 +361,15 @@ def read(
             data[var] /= 2 * np.pi
 
     # Get boundary/limiter dimensions
-    nbdry, nlim = bdry_lim_reader.read(fh.readline())
+    nbdry, nlim = read_array(2, fh, bdry_lim_fmt)
     data["nbdry"], data["nlim"] = nbdry, nlim
 
     if nbdry > 0:
-        bdry = read_array(2 * nbdry, fh, data_reader)
+        bdry = read_array(2 * nbdry, fh, data_fmt)
         data["rbdry"], data["zbdry"] = bdry[0::2], bdry[1::2]
 
     if nlim > 0:
-        lim = read_array(2 * nlim, fh, data_reader)
+        lim = read_array(2 * nlim, fh, data_fmt)
         data["rlim"], data["zlim"] = lim[0::2], lim[1::2]
 
     return data

@@ -153,6 +153,7 @@ def test_write(path, tmp_path):
         # Ignore header line
         original_lines = original.readlines()[1:]
         new_lines = new.readlines()[1:]
+
     # Ensure we managed to read/write something
     assert original_lines
     assert new_lines
@@ -162,4 +163,9 @@ def test_write(path, tmp_path):
 
 
 # Test with broken G-EQDSK files
-# TODO
+# TODO write: missing required data
+# TODO write: required data wrong type
+# TODO write: arrays wrong size
+# TODO read: catch warn if duplicated entries don't match
+# TODO read: raise if arrays are wrong size
+# TODO read: raise if nbdry, nlim line missing

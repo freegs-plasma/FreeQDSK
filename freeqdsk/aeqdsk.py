@@ -13,21 +13,20 @@ from dataclasses import dataclass
 from textwrap import dedent
 from typing import Dict, Optional, TextIO, Union
 
-import fortranformat as ff
 import numpy as np
 from numpy.typing import ArrayLike
 
-from ._fileutils import read_array, write_array
+from ._fileutils import read_array, write_array, write_line
 
 
 #: Default format for all float data
-_data_format = "(4e16.9)"
+_data_fmt = "(4e16.9)"
 
 #: Default format for the line beginning the 'extended' portion of the file
-_extended_sizes_format = "(4i4)"
+_extended_sizes_fmt = "(4i4)"
 
 #: Default format for time stamps
-_time_format = "(1e16.9)"
+_time_fmt = "(1e16.9)"
 
 
 @dataclass
@@ -436,9 +435,9 @@ def _field_value(
 def write(
     data: Dict[str, Union[float, int, ArrayLike]],
     fh: TextIO,
-    data_format: Optional[str] = None,
-    extended_sizes_format: Optional[str] = None,
-    time_format: Optional[str] = None,
+    data_fmt: Optional[str] = None,
+    extended_sizes_fmt: Optional[str] = None,
+    time_fmt: Optional[str] = None,
 ) -> None:
     """
     Write a dict of A-EQDSK data to a file.
@@ -449,25 +448,22 @@ def write(
         The A-EQDSK data to write to disk. It may also include header information.
     fh: TextIO
         File handle. Should be in a text write mode, i.e.``open(filename, "w")``.
-    data_format: Optional[str], default None
+    data_fmt: Optional[str], default None
         Fortran IO format for A-EQDSK data. If not provided, uses ``(4e16.9)``.
-    extended_sizes_format: Optional[str], default None
+    extended_sizes_fmt: Optional[str], default None
         Fortran IO format for the line specifying array lengths in the extended portion
         of the A-EQDSK file. If not provided, uses ``(4i4)``.
-    time_format: Optional[str], default None
+    time_fmt: Optional[str], default None
         Fortran IO format for time stamps. If not provided, uses ``(1e16.9)``.
     """
     # TODO Need proper header format
 
-    if data_format is None:
-        data_format = _data_format
-    if extended_sizes_format is None:
-        extended_sizes_format = _extended_sizes_format
-    if time_format is None:
-        time_format = _time_format
-    data_writer = ff.FortranRecordWriter(data_format)
-    extended_sizes_writer = ff.FortranRecordWriter(extended_sizes_format)
-    time_writer = ff.FortranRecordWriter(time_format)
+    if data_fmt is None:
+        data_fmt = _data_fmt
+    if extended_sizes_fmt is None:
+        extended_sizes_fmt = _extended_sizes_fmt
+    if time_fmt is None:
+        time_fmt = _time_fmt
 
     # First line identification string
     # Default to date > 1997 since that format includes nsilop etc.
@@ -478,9 +474,10 @@ def write(
 
     # Third line time
     time = data.get("time", 0.0)
-    write_array([time], fh, time_writer)
+    write_line([time], fh, time_fmt)
 
     # Fourth line
+    # TODO What is the rigorous format for this line?
     # time(jj),jflag(jj),lflag,limloc(jj), mco2v,mco2r,qmflag
     #   jflag = 0 if error  (? Seems to contradict example)
     #   lflag > 0 if error  (? Seems to contradict example)
@@ -490,8 +487,8 @@ def write(
     #   mco2r   number of radial CO2 density chords
     #   qmflag  axial q(0) flag, FIX if constrained and CLC for float
     fh.write(
-        "*{:s}             {:d}                {:d} {:s}  {:d}   {:d} {:s}\n".format(
-            time_writer.write([time]).strip(),
+        "*   {:e}   {:d}                {:d} {:s}  {:d}   {:d} {:s}\n".format(
+            time,
             data.get("jflag", 1),
             data.get("lflag", 0),
             data.get("limloc", "DN"),
@@ -502,18 +499,14 @@ def write(
     )
 
     # Output first block of general data
-    write_array(
-        [_field_value(field, data) for field in _general_block_1], fh, data_writer
-    )
+    write_array([_field_value(field, data) for field in _general_block_1], fh, data_fmt)
 
     # Output laser bits
     for field in _laser_block:
-        write_array(_field_value(field, data), fh, data_writer)
+        write_array(_field_value(field, data), fh, data_fmt)
 
     # Output second block of general data
-    write_array(
-        [_field_value(field, data) for field in _general_block_2], fh, data_writer
-    )
+    write_array([_field_value(field, data) for field in _general_block_2], fh, data_fmt)
 
     # Check if we need to write an extended section
     extended = False
@@ -533,19 +526,19 @@ def write(
         write_array(
             [_field_value(field, data) for field in _extended_sizes],
             fh,
-            extended_sizes_writer,
+            extended_sizes_fmt,
         )
 
         # First two arrays are joined because... reasons
         write_array(
             np.concat([_field_value(field, data) for field in _extended_arrays_1]),
             fh,
-            data_writer,
+            data_fmt,
         )
 
         # Next two arrays are arranged in a standard pattern
         for field in _extended_arrays_2:
-            write_array(_field_value(field, data), fh, data_writer)
+            write_array(_field_value(field, data), fh, data_fmt)
 
         # Write a final general block
         # Find the last field that is present within data. Write up to there and no
@@ -557,14 +550,14 @@ def write(
         write_array(
             [_field_value(field, data) for field in _extended_general[:last_field]],
             fh,
-            data_writer,
+            data_fmt,
         )
 
 
 def read(
     fh: TextIO,
-    data_format: Optional[str] = None,
-    extended_sizes_format: Optional[str] = None,
+    data_fmt: Optional[str] = None,
+    extended_sizes_fmt: Optional[str] = None,
 ) -> Dict[str, Union[int, float, np.ndarray]]:
     """
     Read an A-EQDSK file, returning a dictionary of data.
@@ -574,9 +567,9 @@ def read(
     fh: TextIO
         File handle to write to. Should be opened in a text read mode, i.e.
         ``open(filename, "r")``.
-    data_format: Optional[str], default None
+    data_fmt: Optional[str], default None
         Fortran IO format for A-EQDSK data. If not provided, uses ``(4e16.9)``.
-    extended_sizes_format: Optional[str], default None
+    extended_sizes_fmt: Optional[str], default None
         Fortran IO format for the line specifying array lengths in the extended portion
         of the A-EQDSK file. If not provided, uses ``(4i4)``.
 
@@ -585,12 +578,10 @@ def read(
     data: Dict[str, Union[float, int, np.ndarray]]
         Dict of A-EQDSK data.
     """
-    if data_format is None:
-        data_format = _data_format
-    if extended_sizes_format is None:
-        extended_sizes_format = _extended_sizes_format
-    data_reader = ff.FortranRecordReader(data_format)
-    extended_sizes_reader = ff.FortranRecordReader(extended_sizes_format)
+    if data_fmt is None:
+        data_fmt = _data_fmt
+    if extended_sizes_fmt is None:
+        extended_sizes_fmt = _extended_sizes_fmt
 
     # First line label. Date.
     header = fh.readline()
@@ -603,7 +594,8 @@ def read(
 
     # Fourth line has (up to?) 9 entries
     # time(jj),jflag(jj),lflag,limloc(jj), mco2v,mco2r,qmflag
-    words = fh.readline().split()
+    # Exclude the * at the beginning
+    words = fh.readline().replace("*", "").split()
 
     # Dictionary to hold result
     data = {
@@ -619,24 +611,24 @@ def read(
     }
 
     # Read first block of data
-    general_block_1_values = read_array(len(_general_block_1), fh, data_reader)
+    general_block_1_values = read_array(len(_general_block_1), fh, data_fmt)
     for field, value in zip(_general_block_1, general_block_1_values):
         data[field.name] = value
 
     # Read laser bits
     for field in _laser_block:
-        values = read_array(data[field.has_length], fh, data_reader)
+        values = read_array(data[field.has_length], fh, data_fmt)
         data[field.name] = values
 
     # Read next block of data
-    general_block_2_values = read_array(len(_general_block_2), fh, data_reader)
+    general_block_2_values = read_array(len(_general_block_2), fh, data_fmt)
     for field, value in zip(_general_block_2, general_block_2_values):
         data[field.name] = value
 
     # Try reading first line of extended section. If this fails, raise a warning and
     # return data without extended portion
     try:
-        extended_sizes = read_array(len(_extended_sizes), fh, extended_sizes_reader)
+        extended_sizes = read_array(len(_extended_sizes), fh, extended_sizes_fmt)
     except Exception:
         warnings.warn("Failed to read A-EQDSK extended section, assuming old file type")
         return data
@@ -646,17 +638,17 @@ def read(
 
     # The first two arrays are joined together
     joined_len = sum(data[field.has_length] for field in _extended_arrays_1)
-    joined = read_array(joined_len, fh, data_reader)
+    joined = read_array(joined_len, fh, data_fmt)
     data[_extended_arrays_1[0].name] = joined[: _extended_arrays_1[0].has_length]
     data[_extended_arrays_1[1].name] = joined[_extended_arrays_1[0].has_length :]
 
     # The next two are normal
     for field in _extended_arrays_2:
-        values = read_array(data[field.has_length], fh, data_reader)
+        values = read_array(data[field.has_length], fh, data_fmt)
         data[field.name] = values
 
     # Read in another general data block
-    extended_values = read_array("all", fh, data_reader)
+    extended_values = read_array("all", fh, data_fmt)
     if len(extended_values) > len(_extended_general):
         warnings.warn(
             "Encountered variables at the end of an A-EQDSK file that are not "
