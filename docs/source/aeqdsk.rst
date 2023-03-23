@@ -9,3 +9,4 @@ aeqdsk
 
 .. autoclass:: freeqdsk.aeqdsk.Field
    :members:
+.. autofunction:: freeqdsk.aeqdsk.fields

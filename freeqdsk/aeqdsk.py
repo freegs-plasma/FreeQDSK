@@ -20,13 +20,13 @@ from ._fileutils import read_array, write_array, write_line
 
 
 #: Default format for all float data
-_data_fmt = "(4e16.9)"
+_data_fmt = "(e17.9,3e16.9)"
 
 #: Default format for the line beginning the 'extended' portion of the file
-_extended_sizes_fmt = "(4i4)"
+_extended_sizes_fmt = "(i6,3i5)"
 
 #: Default format for time stamps
-_time_fmt = "(1e16.9)"
+_time_fmt = "(1e17.9)"
 
 
 @dataclass
@@ -403,7 +403,22 @@ _extended_general = [
     Field("rmidin", description="inner major radius in m at Z=0.0", default=0.0),
     Field("rmidout", description="outer major radius in m at Z=0.0", default=0.0),
 ]
-# TODO add extra lines from eqtools
+# TODO The package 'eq_tools' lists more keys than this
+
+
+def fields() -> Dict[str, Field]:
+    r"""
+    Returns full list of all Fields.
+    """
+    return (
+        _general_block_1
+        + _laser_block
+        + _general_block_2
+        + _extended_sizes
+        + _extended_arrays_1
+        + _extended_arrays_2
+        + _extended_general
+    )
 
 
 def _field_value(
@@ -449,12 +464,12 @@ def write(
     fh: TextIO
         File handle. Should be in a text write mode, i.e.``open(filename, "w")``.
     data_fmt: Optional[str], default None
-        Fortran IO format for A-EQDSK data. If not provided, uses ``(4e16.9)``.
+        Fortran IO format for A-EQDSK data. If not provided, uses ``(e17.9,3e16.9)``.
     extended_sizes_fmt: Optional[str], default None
         Fortran IO format for the line specifying array lengths in the extended portion
-        of the A-EQDSK file. If not provided, uses ``(4i4)``.
+        of the A-EQDSK file. If not provided, uses ``(i6,3i5)``.
     time_fmt: Optional[str], default None
-        Fortran IO format for time stamps. If not provided, uses ``(1e16.9)``.
+        Fortran IO format for time stamps. If not provided, uses ``(e17.9)``.
     """
     # TODO Need proper header format
 
@@ -467,7 +482,7 @@ def write(
 
     # First line identification string
     # Default to date > 1997 since that format includes nsilop etc.
-    fh.write("{0:11s}\n".format(data.get("header", " 26-OCT-98 09/07/98  ")))
+    fh.write(" {0:s}\n".format(data.get("header", "26-OCT-98 09/07/98")))
 
     # Second line shot number
     fh.write(" {:d}               1\n".format(data.get("shot", 0)))
@@ -531,7 +546,7 @@ def write(
 
         # First two arrays are joined because... reasons
         write_array(
-            np.concat([_field_value(field, data) for field in _extended_arrays_1]),
+            np.concatenate([_field_value(field, data) for field in _extended_arrays_1]),
             fh,
             data_fmt,
         )
@@ -568,10 +583,10 @@ def read(
         File handle to write to. Should be opened in a text read mode, i.e.
         ``open(filename, "r")``.
     data_fmt: Optional[str], default None
-        Fortran IO format for A-EQDSK data. If not provided, uses ``(4e16.9)``.
+        Fortran IO format for A-EQDSK data. If not provided, uses ``(e17.9,3e16.9)``.
     extended_sizes_fmt: Optional[str], default None
         Fortran IO format for the line specifying array lengths in the extended portion
-        of the A-EQDSK file. If not provided, uses ``(4i4)``.
+        of the A-EQDSK file. If not provided, uses ``(i6,3i5)``.
 
     Returns
     -------
@@ -584,7 +599,7 @@ def read(
         extended_sizes_fmt = _extended_sizes_fmt
 
     # First line label. Date.
-    header = fh.readline()
+    header = fh.readline().rstrip()
 
     # Second line shot number
     shot = int(fh.readline().split()[0])
@@ -639,8 +654,8 @@ def read(
     # The first two arrays are joined together
     joined_len = sum(data[field.has_length] for field in _extended_arrays_1)
     joined = read_array(joined_len, fh, data_fmt)
-    data[_extended_arrays_1[0].name] = joined[: _extended_arrays_1[0].has_length]
-    data[_extended_arrays_1[1].name] = joined[_extended_arrays_1[0].has_length :]
+    data[_extended_arrays_1[0].name] = joined[: data[_extended_arrays_1[0].has_length]]
+    data[_extended_arrays_1[1].name] = joined[data[_extended_arrays_1[0].has_length] :]
 
     # The next two are normal
     for field in _extended_arrays_2:
@@ -708,7 +723,8 @@ _docstrings = [
 
 
         This is followed by a collection of variables expressed as floats, written 4 per
-        line with the Fortran format ``(4e16.9)``:
+        line with a space at the beginning following the Fortran format
+        ``(e17.9,3e16.9)``:
 
         .. list-table:: Initial block
            :widths: 20 20 60
@@ -772,7 +788,7 @@ _docstrings.append(
 
         The following parts of an A-EQDSK file are not present in old versions of the
         file. The next line describes the lengths of 4 further arrays using 4 ints in
-        the Fortran format '(4i4)':
+        the Fortran format '(i6,3i5)':
 
         .. list-table:: Extended section sizes
            :widths: 20 20 60

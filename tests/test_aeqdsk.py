@@ -4,13 +4,20 @@ SPDX-FileCopyrightText: © 2020 Ben Dudson, University of York.
 SPDX-License-Identifier: MIT
 """
 
-import numpy
+from difflib import unified_diff
 from io import StringIO
+from pathlib import Path
+
+import numpy as np
+import pytest
+from numpy.testing import assert_allclose
 
 from freeqdsk import aeqdsk
 
+_data_path = Path(__file__).parent / "data" / "aeqdsk"
 
-def test_writeread():
+
+def test_roundtrip():
     """
     Test that data can be written then read back
     """
@@ -114,4 +121,63 @@ def test_writeread():
             assert data2[key] == data[key]
         else:
             # Number, or list of numbers
-            numpy.testing.assert_allclose(data2[key], data[key])
+            assert_allclose(data2[key], data[key])
+
+
+def test_read():
+    with open(_data_path / "test_1.aeqdsk") as f:
+        data = aeqdsk.read(f)
+
+    # Check arrays are the correct shape
+    assert np.shape(data["rco2v"]) == (data["mco2v"],)
+    assert np.shape(data["dco2v"]) == (data["mco2v"],)
+    assert np.shape(data["rco2r"]) == (data["mco2r"],)
+    assert np.shape(data["dco2r"]) == (data["mco2r"],)
+    assert np.shape(data["csilop"]) == (data["nsilop"],)
+    assert np.shape(data["cmpr2"]) == (data["magpri"],)
+    assert np.shape(data["ccbrsp"]) == (data["nfcoil"],)
+    assert np.shape(data["eccurt"]) == (data["nesum"],)
+
+    # Check some specific values
+    assert data["mco2v"] == 3
+    assert data["mco2r"] == 2
+    assert data["nsilop"] == 1
+    assert data["magpri"] == 1
+    assert data["nfcoil"] == 1
+    assert data["nesum"] == 1
+    # s3 is the fifth element after the laser block
+    assert np.isclose(data["s3"], 0.538445055)
+    # zvsin is the third element after the extended arrays
+    assert np.isclose(data["zvsin"], -9.99e4)
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_write(tmp_path):
+    path = _data_path / "test_1.aeqdsk"
+
+    # Create tmp dir
+    d = tmp_path / "aeqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / path.name
+
+    # Read test file
+    with open(path) as f:
+        data = aeqdsk.read(f)
+
+    # Write out to tmp dir
+    with open(out, "w") as f:
+        aeqdsk.write(data, f)
+
+    # Read both files back in as plain lists of str
+    with open(path) as original, open(out) as new:
+        # Ignore header lines, format not yet fully specified
+        # Ignore values at the end that we can't see
+        new_lines = new.readlines()[4:-1]
+        original_lines = original.readlines()[4 : 4 + len(new_lines)]
+
+    # Ensure we managed to read/write something
+    assert original_lines
+    assert new_lines
+    # Check that the diff is zero
+    diff = [*unified_diff(original_lines, new_lines)]
+    assert not diff
