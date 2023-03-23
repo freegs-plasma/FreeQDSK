@@ -8,6 +8,7 @@ from io import StringIO
 from difflib import unified_diff
 from pathlib import Path
 
+import fortranformat as ff
 import pytest
 import numpy as np
 from numpy.random import rand
@@ -69,16 +70,17 @@ def test_roundtrip(data_dict):
         assert_allclose(data2[key], data_dict[key])
 
 
-# Test with real G-EQDSK files
+# Test with preprepared G-EQDSK files
 
-_data_path = Path(__file__).parent / "test_data" / "geqdsk"
+
+_data_path = Path(__file__).parent / "data" / "geqdsk"
 
 _test_1_data = {
     "nx": 101,
     "ny": 101,
-    "zdim": 3.65,
-    "cpasma": 5.83933250e5,
-    "sibdry": 5.74827987e-2,
+    "zdim": 3.62482049,
+    "cpasma": 6.11940815e5,
+    "sibdry": 5.82339193e-2,
     "nbdry": 256,
     "nlim": 256,
 }
@@ -86,10 +88,10 @@ _test_1_data = {
 _test_2_data = {
     "nx": 69,
     "ny": 175,
-    "bcentr": 2.4,
+    "bcentr": 2.36591466,
     "zmagx": 0.0,
-    "cpasma": 2.1e7,
-    "sibdry": 2.2030412,
+    "cpasma": 2.06432536e7,
+    "sibdry": 2.16552103,
     "nbdry": 501,
     "nlim": 500,
 }
@@ -163,9 +165,136 @@ def test_write(path, tmp_path):
 
 
 # Test with broken G-EQDSK files
-# TODO write: missing required data
-# TODO write: required data wrong type
-# TODO write: arrays wrong size
-# TODO read: catch warn if duplicated entries don't match
-# TODO read: raise if arrays are wrong size
-# TODO read: raise if nbdry, nlim line missing
+
+
+def test_write_unrecoverable_missing_data(tmp_path):
+    # read in test data
+    with open(_data_path / "test_1.geqdsk") as f:
+        data = geqdsk.read(f)
+
+    # Delete necessary data
+    data.pop("psi")
+
+    # Write out again
+    d = tmp_path / "geqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "unrecoverable.geqdsk"
+    with open(out, "w") as f, pytest.raises(KeyError):
+        geqdsk.write(data, f)
+
+
+def test_write_recoverable_missing_data(tmp_path):
+    # read in test data
+    with open(_data_path / "test_1.geqdsk") as f:
+        data = geqdsk.read(f)
+
+    # Delete superfluous data
+    data.pop("nx")
+
+    # Write out again
+    d = tmp_path / "geqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "recoverable.geqdsk"
+    with open(out, "w") as f:
+        geqdsk.write(data, f)
+
+
+def test_write_bad_data(tmp_path):
+    # read in test data
+    with open(_data_path / "test_1.geqdsk") as f:
+        data = geqdsk.read(f)
+
+    # Delete necessary data
+    data["fpol"] = "hello world!"
+
+    # Write out again
+    d = tmp_path / "geqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "bad_data.geqdsk"
+    with open(out, "w") as f, pytest.raises(ValueError):
+        geqdsk.write(data, f)
+
+
+def test_write_wrong_array_size(tmp_path):
+    # read in test data
+    with open(_data_path / "test_1.geqdsk") as f:
+        data = geqdsk.read(f)
+
+    # Delete necessary data
+    data["fpol"] = np.array([1.0, 2.0, 3.0])
+
+    # Write out again
+    d = tmp_path / "geqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "wrong_size.geqdsk"
+    with open(out, "w") as f, pytest.raises(ValueError):
+        geqdsk.write(data, f)
+
+
+_duplicate_entries = {
+    "rmagx": {"line": 3, "idx": 3},
+    "zmagx": {"line": 4, "idx": 0},
+    "simagx": {"line": 3, "idx": 1},
+    "sibdry": {"line": 2, "idx": 3},
+}
+
+
+@pytest.mark.parametrize("duplicate", _duplicate_entries)
+def test_read_duplicate_entry_differences(duplicate, tmp_path):
+    d = tmp_path / "geqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "duplicate_differences.geqdsk"
+    # read in test data, copy to new file, modifying one of the duplicates
+    dup_line = _duplicate_entries[duplicate]["line"]
+    dup_idx = _duplicate_entries[duplicate]["idx"]
+    with open(_data_path / "test_1.geqdsk") as f1, open(out, "w") as f2:
+        for line_idx, line in enumerate(f1):
+            if line_idx == dup_line:
+                record = ff.FortranRecordReader("(5e16.9)").read(line)
+                record[dup_idx] = 3.142
+                f2.write(ff.FortranRecordWriter("(5e16.9)").write(record) + "\n")
+            else:
+                f2.write(line)
+
+    # Expect warning that duplicated entries don't match
+    with open(out) as f, pytest.warns(UserWarning, match="duplicate"):
+        geqdsk.read(f)
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_read_missing_values(tmp_path):
+    # The values should be duplicated
+    d = tmp_path / "geqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "missing_values.geqdsk"
+    # read in test data, copy to new file, deleting a value
+    with open(_data_path / "test_1.geqdsk") as f1, open(out, "w") as f2:
+        for line_idx, line in enumerate(f1):
+            if line_idx == 3:
+                record = ff.FortranRecordReader("(5e16.9)").read(line)
+                f2.write(ff.FortranRecordWriter("(4e16.9)").write(record[:-1]) + "\n")
+            else:
+                f2.write(line)
+
+    # Expect this to fail messily, by reading the wrong lines into the wrong arrays,
+    # before suddenly running out of file to read
+    with open(out) as f, pytest.raises(Exception):
+        geqdsk.read(f)
+
+
+def test_read_missing_bdry_lim(tmp_path):
+    # The values should be duplicated
+    d = tmp_path / "geqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "missing_values.geqdsk"
+    # read in test data, copy to new file, missing the bdry/lim line and subsequent
+    # bits of the file
+    with open(_data_path / "test_1.geqdsk") as f1, open(out, "w") as f2:
+        for line_idx, line in enumerate(f1):
+            if len(line) == 11:  # (2i5) plus '\n'
+                break
+            else:
+                f2.write(line)
+
+    with open(out) as f, pytest.raises(EOFError):
+        geqdsk.read(f)

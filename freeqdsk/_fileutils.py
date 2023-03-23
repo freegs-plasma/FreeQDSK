@@ -221,13 +221,13 @@ def read_line(fh: TextIO, fmt: str) -> List[Any]:
     ------
     ValueError
         If attempting to read a line which does not match the supplied format.
-    RuntimeError
-        If reading a blank line or the file handle has reached the end of the file.
+    EOFError
+        If the file handle has reached the end of the file.
     """
     with _fortranformat_written_vars_only():
         line = fh.readline()
         if not line:
-            raise RuntimeError("Encountered a blank line or EOF while reading array")
+            raise EOFError("Encountered EOF while reading array")
         return ff.FortranRecordReader(fmt).read(line)
 
 
@@ -258,9 +258,8 @@ def read_array(shape: Union[int, str, ArrayLike], fh: TextIO, fmt: str) -> np.nd
     ValueError
         If ``shape`` is not a scalar, a 1D iterable, or the string ``"all"``. Also
         raised if attempting to read a line which does not match the supplied format.
-    RuntimeError
-        If encountering end-of-file or a blank line while reading an array, and shape
-        if not ``"all"``
+    EOFError
+        If encountering end-of-file while reading an array, and shape if not ``"all"``
 
     Warns
     -----
@@ -299,9 +298,7 @@ def read_array(shape: Union[int, str, ArrayLike], fh: TextIO, fmt: str) -> np.nd
                     while len(result) < shape[0]:
                         line = fh.readline()
                         if not line:
-                            raise RuntimeError(
-                                "Encountered a blank line or EOF while reading array"
-                            )
+                            raise EOFError("Encountered EOF while reading array")
                         result.extend(reader.read(line))
                     if len(result) != shape[0]:
                         warnings.warn(

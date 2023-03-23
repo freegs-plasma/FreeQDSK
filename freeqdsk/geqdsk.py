@@ -191,7 +191,8 @@ def write(
     KeyError
         If required information is missing from ``data``.
     ValueError
-        If the provided arrays have incorrect dimensions.
+        If the provided arrays have incorrect dimensions, or if the data provided is
+        of the wrong type.
 
     Notes
     -----
@@ -317,6 +318,13 @@ def read(
     -------
     Dict[str, Union[int, float, np.ndarray]]
         Dict of G-EQDSK data.
+
+    Warns
+    -----
+    UserWarning
+        If any of the entries that are duplicated in the file do not match. These
+        include 'rmagx', 'zmagx', 'simagx' and 'sibdry'. The value returned will be
+        the last found.
     """
     if header_fmt is None:
         header_fmt = _header_fmt
