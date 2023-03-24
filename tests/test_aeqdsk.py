@@ -171,9 +171,8 @@ def test_write(tmp_path):
     # Read both files back in as plain lists of str
     with open(path) as original, open(out) as new:
         # Ignore header lines, format not yet fully specified
-        # Ignore values at the end that we can't see
-        new_lines = new.readlines()[4:-1]
-        original_lines = original.readlines()[4 : 4 + len(new_lines)]
+        original_lines = original.readlines()[4:]
+        new_lines = new.readlines()[4:]
 
     # Ensure we managed to read/write something
     assert original_lines

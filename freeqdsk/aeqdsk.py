@@ -402,8 +402,75 @@ _extended_general = [
     ),
     Field("rmidin", description="inner major radius in m at Z=0.0", default=0.0),
     Field("rmidout", description="outer major radius in m at Z=0.0", default=0.0),
+    Field("psurfa", description="plasma boundary surface area, m^2", default=0.0),
+    Field("peak", description="peak to average plasma pressure", default=0.0),
+    Field(
+        "dminux", description="distance between limiter and upper x-point", default=0.0
+    ),
+    Field(
+        "dminlx", description="distance between limiter and lower x-point", default=0.0
+    ),
+    Field(
+        "dolubaf", description="distance from outer leg to upper baffle", default=0.0
+    ),
+    Field(
+        "dolubafm",
+        description=(
+            "distance at outboard midplane between last closed flux surface and the "
+            "flux surface interesecting the upper baffle"
+        ),
+        default=0.0,
+    ),
+    Field("diludom", description="distance from inner leg to upper dome", default=0.0),
+    Field(
+        "diludomm",
+        description=(
+            "distance at inner midplane between the last closed flux surface and the "
+            "flux surface intersecting the upper dome"
+        ),
+        default=0.0,
+    ),
+    Field(
+        "ratsol",
+        description="ratio of flux expansion at inner midplane vs outer midplane",
+        default=0.0,
+    ),
+    Field("rvsiu", description="major radius of inner upper strikepoint", default=0.0),
+    Field("zvsiu", description="Z of inner upper strikepoint", default=0.0),
+    Field("rvsid", description="major radius of inner lower strikepoint", default=0.0),
+    Field("zvsid", description="Z of inner lower strikepoint", default=0.0),
+    Field("rvsou", description="major radius of outer upper strikepoint", default=0.0),
+    Field("zvsou", description="Z of outer upper strike point", default=0.0),
+    Field("rvsod", description="major radius of outer lower strike point", default=0.0),
+    Field("zvsod", description="Z of outer lower strike point", default=0.0),
+    Field(
+        "condno",
+        description="condition number from least-squares fitting routine",
+        default=0.0,
+    ),
+    Field(
+        "dollbaf", description="distance from outer leg to lower baffle", default=0.0
+    ),
+    Field(
+        "dollbafm",
+        description=(
+            "distance from outer midplane last closed flux surface to the flux surface "
+            "intersecting the lower baffle"
+        ),
+        default=0.0,
+    ),
+    Field("dilldom", description="distance from inner leg to lower dome", default=0.0),
+    Field(
+        "dilldomm",
+        description=(
+            "distance from inner midplane last closed flux surface and the flux "
+            "surface intersecting the lower dome"
+        ),
+        default=0.0,
+    ),
+    Field("dummy_1", description="Purpose unknown", default=0.0),
+    Field("dummy_2", description="Purpose unknown", default=0.0),
 ]
-# TODO The package 'eq_tools' lists more keys than this
 
 
 def fields() -> Dict[str, Field]:
@@ -558,10 +625,10 @@ def write(
         # Write a final general block
         # Find the last field that is present within data. Write up to there and no
         # further, filling default values on the way
-        last_field = -1
+        last_field = 0
         for idx, field in enumerate(_extended_general):
             if field.name in data:
-                last_field = idx
+                last_field = idx + 1
         write_array(
             [_field_value(field, data) for field in _extended_general[:last_field]],
             fh,
@@ -704,6 +771,16 @@ _docstrings = [
         .. note::
            This documentation is incomplete. If you have information that could be
            added, please get in touch or a raise a pull request!
+
+        .. warning::
+           Sources do not agree on which values are stored in an A-EQDSK file, and
+           in which order they are written. This implementation is based on A-EQDSK
+           readers from FreeGS_ and eq_tools_, but may not be appropriate for
+           all A-EQDSK files.
+
+           If you have information that could help us alleviate this issue, please get
+           in touch. A primary source recording which fields are included would be
+           extremely helpful.
 
         A-EQDSK files contain a wide variety of diagnostic data. It begins with a
         specially formatted header over the first 4 lines which contains:
@@ -865,5 +942,15 @@ _docstrings.append(
 
 for field in _extended_general:
     _docstrings.append(_table_entry(field))
+
+_docstrings.append(
+    dedent(
+        """\
+
+        .. _FreeGS: https://github.com/freegs-plasma/freegs
+        .. _eq_tools: https://github.com/PSFCPlasmaTools/eqtools
+        """
+    )
+)
 
 __doc__ = "\n".join(_docstrings)
