@@ -25,7 +25,7 @@ _data_fmt = "(e17.9,3e16.9)"
 #: Default format for the line beginning the 'extended' portion of the file
 _extended_sizes_fmt = "(i6,3i5)"
 
-#: Default format for time stamps
+#: Default format for time stamp
 _time_fmt = "(1e17.9)"
 
 
@@ -477,7 +477,7 @@ def fields() -> Dict[str, Field]:
     r"""
     Returns full list of all Fields.
     """
-    return (
+    all_fields = (
         _general_block_1
         + _laser_block
         + _general_block_2
@@ -486,32 +486,51 @@ def fields() -> Dict[str, Field]:
         + _extended_arrays_2
         + _extended_general
     )
+    return {field.name: field for field in all_fields}
 
 
-def _field_value(
-    field: Field, data: Dict[str, Union[float, int, ArrayLike]]
-) -> Union[float, int, ArrayLike]:
+def _float_field(field: Field, data: Dict[str, Union[float, int, ArrayLike]]) -> float:
     """
-    Returns field data from dict if present. Otherwise returns a default.
+    Returns single floating point field data from dict if present.
+    Otherwise returns a default.
+    """
+    return float(data.get(field.name, field.default))
+
+
+def _len_field(field: Field, data: Dict[str, Union[float, int, ArrayLike]]) -> int:
+    """
+    Returns length field data from dict if present.
+    Otherwise gets length from array (if present) or returns 0.
     """
     if field.name in data:
-        return data[field.name]
-    elif field.default is not None:
-        return field.default
-    elif field.has_length is not None:
-        if field.has_length in data:
-            return [0.0] * data[field.has_length]
-        else:
-            return []
-    elif field.length_of is not None:
-        if field.length_of in data:
-            return len(data[field.length_of])
-        else:
-            return 0
+        # Check length of array, if present
+        if field.length_of in data and data[field.name] != len(data[field.length_of]):
+            raise ValueError(
+                f"'{field.name}' should be the length of the array '{field.length_of}'"
+            )
+        return int(data[field.name])
     else:
-        raise KeyError(
-            f"The field {field.name} is not in data, and no default could be determined"
-        )
+        return len(data.get(field.length_of, []))
+
+
+def _array_field(
+    field: Field, data: Dict[str, Union[float, int, ArrayLike]]
+) -> np.ndarray:
+    """
+    Returns array field data from dict if present.
+    Otherwise builds array of zeros of the supplied length (if present) or returns an
+    empty array.
+    """
+    if field.name in data:
+        result = np.asarray(data[field.name])
+        if result.ndim == 0:
+            result = np.array([result])
+        # Check length of array, if present
+        if field.has_length in data and len(data[field.name]) != data[field.has_length]:
+            raise ValueError(f"'{field.name}' should have length '{field.has_length}'")
+        return result
+    else:
+        return np.zeros(data.get(field.has_length, 0))
 
 
 def write(
@@ -538,8 +557,6 @@ def write(
     time_fmt: Optional[str], default None
         Fortran IO format for time stamps. If not provided, uses ``(e17.9)``.
     """
-    # TODO Need proper header format
-
     if data_fmt is None:
         data_fmt = _data_fmt
     if extended_sizes_fmt is None:
@@ -581,14 +598,14 @@ def write(
     )
 
     # Output first block of general data
-    write_array([_field_value(field, data) for field in _general_block_1], fh, data_fmt)
+    write_array([_float_field(field, data) for field in _general_block_1], fh, data_fmt)
 
     # Output laser bits
     for field in _laser_block:
-        write_array(_field_value(field, data), fh, data_fmt)
+        write_array(_array_field(field, data), fh, data_fmt)
 
     # Output second block of general data
-    write_array([_field_value(field, data) for field in _general_block_2], fh, data_fmt)
+    write_array([_float_field(field, data) for field in _general_block_2], fh, data_fmt)
 
     # Check if we need to write an extended section
     extended = False
@@ -606,21 +623,21 @@ def write(
     if extended:
         # Write extended portion of the file
         write_array(
-            [_field_value(field, data) for field in _extended_sizes],
+            [_len_field(field, data) for field in _extended_sizes],
             fh,
             extended_sizes_fmt,
         )
 
-        # First two arrays are joined because... reasons
+        # First two arrays are joined
         write_array(
-            np.concatenate([_field_value(field, data) for field in _extended_arrays_1]),
+            np.concatenate([_array_field(field, data) for field in _extended_arrays_1]),
             fh,
             data_fmt,
         )
 
         # Next two arrays are arranged in a standard pattern
         for field in _extended_arrays_2:
-            write_array(_field_value(field, data), fh, data_fmt)
+            write_array(_array_field(field, data), fh, data_fmt)
 
         # Write a final general block
         # Find the last field that is present within data. Write up to there and no
@@ -630,7 +647,7 @@ def write(
             if field.name in data:
                 last_field = idx + 1
         write_array(
-            [_field_value(field, data) for field in _extended_general[:last_field]],
+            [_float_field(field, data) for field in _extended_general[:last_field]],
             fh,
             data_fmt,
         )

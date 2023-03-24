@@ -180,3 +180,74 @@ def test_write(tmp_path):
     # Check that the diff is zero
     diff = [*unified_diff(original_lines, new_lines)]
     assert not diff
+
+
+def test_write_defaults(tmp_path):
+    d = tmp_path / "aeqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "defaults.aeqdsk"
+    with open(out, "w") as f:
+        aeqdsk.write({}, f)
+    with open(out, "r") as f:
+        data = aeqdsk.read(f)
+
+    # Ensure we at least have data up to the extended blocks
+    assert "tavem" in data
+
+    # discard header items
+    data.pop("header")
+    data.pop("shot")
+    data.pop("time")
+    data.pop("jflag")
+    data.pop("lflag")
+    data.pop("limloc")
+    data.pop("mco2v")
+    data.pop("mco2r")
+    data.pop("qmflag")
+
+    # Ensure defaults match expected values
+    fields = aeqdsk.fields()
+    for key, value in data.items():
+        expected_field = fields[key]
+        if expected_field.default is not None:
+            assert_allclose(value, expected_field.default)
+        else:
+            if expected_field.has_length is not None:
+                # must be an empty array
+                assert len(value) == 0
+            else:
+                # must be length of empty array
+                assert value == 0
+
+
+@pytest.mark.parametrize("field", ("cpasma", "dco2v", "nesum", "csilop", "eccurt"))
+def test_write_bad_data(field, tmp_path):
+    # read in test data
+    with open(_data_path / "test_1.aeqdsk") as f:
+        data = aeqdsk.read(f)
+
+    # Set data to incompatible type
+    data[field] = "hello world!"
+
+    # Write out again
+    d = tmp_path / "aeqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "bad_data.aeqdsk"
+    with open(out, "w") as f, pytest.raises(ValueError):
+        aeqdsk.write(data, f)
+
+
+def test_write_wrong_array_size(tmp_path):
+    # read in test data
+    with open(_data_path / "test_1.aeqdsk") as f:
+        data = aeqdsk.read(f)
+
+    # Set data to wrong shape
+    data["rco2v"] = np.linspace(0, 1, 117)
+
+    # Write out again
+    d = tmp_path / "aeqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "wrong_size.aeqdsk"
+    with open(out, "w") as f, pytest.raises(ValueError):
+        aeqdsk.write(data, f)

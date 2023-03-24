@@ -204,7 +204,7 @@ def test_write_bad_data(tmp_path):
     with open(_data_path / "test_1.geqdsk") as f:
         data = geqdsk.read(f)
 
-    # Delete necessary data
+    # Set data to incompatible type
     data["fpol"] = "hello world!"
 
     # Write out again
@@ -220,7 +220,7 @@ def test_write_wrong_array_size(tmp_path):
     with open(_data_path / "test_1.geqdsk") as f:
         data = geqdsk.read(f)
 
-    # Delete necessary data
+    # Reshape data
     data["fpol"] = np.array([1.0, 2.0, 3.0])
 
     # Write out again
