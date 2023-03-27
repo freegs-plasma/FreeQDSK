@@ -18,9 +18,10 @@ G-EQDSK files begin with a header line containing the following information:
   comment styles in a future update.
 - A mysterious integer of unknown purpose, with a width of 4 characters.
 - The number of points in the R direction, expressed as an integer with a width of
-  4 characters.
+  four characters.
 - The number of points in the Z direction, expressed as an integer with a width of
-  4 characters.
+  four characters.
+
 
 The Fortran format for the header can be expressed ``(a48,3i4)``. This is followed
 by 4 lines of floats describing a tokamak plasma equilibrium. Each line contains 5
@@ -166,25 +167,25 @@ def write(
 
     Parameters
     ----------
-    data: Dict[str, Union[int, float, ArrayLike]]
+    data:
         G-EQDSK data to write. See the 'Notes' section below for info.
-    fh: TextIO
+    fh:
         File handle to write to. Should be opened in a text write mode, i.e.
         ``open(filename, "w")``.
-    label: Optional[str], default None
+    label:
         Text label to put in the file. Defaults to 'FREEGS' if not provided.
-    shot: int, default 0
+    shot:
         Shot number to put in the file.
-    time: int, default 0
+    time:
         Time in milliseconds to put in the file.
-    header_fmt: Optional[str], default None
+    header_fmt:
         Fortran IO format for G-EQDSK header line. If not provided, uses ``(a48,3i4)``,
         corresponding to a comment, a dummy int, nx, and ny.
-    data_fmt: Optional[str], default None
+    data_fmt:
         Fortran IO format for G-EQDSK data. If not provided, uses ``(5e16.9)``.
-    bdr_lim_fmt: Optional[str], default None
+    bdry_lim_fmt:
         Fortran IO format specifying the lengths of the boundary/limiter grids. If
-        not provided, defaults to ``(2i5)``
+        not provided, defaults to ``(2i5)``.
 
     Raises
     ------
@@ -297,27 +298,22 @@ def read(
     Parameters
     ----------
 
-    fh: TextIO
+    fh:
         File handle to read from. Should be opened in a text read mode, i.e.
         ``open(filename, "r")``.
-    cocos: int, default 1
+    cocos:
         COordinate COnventionS. This feature is not fully handled yet, and only
         determines whether psi is divided by :math:`2\pi` or not. If ``cocos >= 10``,
         :math:`\psi` is divided by :math:`2\pi`, and otherwise it is left unchanged.
         See `Sauter et al, 2013 <https://doi.org/10.1016/j.cpc.2012.09.010>`_.
-    header_fmt: Optional[str], default None
+    header_fmt:
         Fortran IO format for G-EQDSK header line. If not provided, uses ``(a48,3i4)``,
         corresponding to a comment, a dummy int, nx, and ny.
-    data_fmt: Optional[str], default None
+    data_fmt:
         Fortran IO format for G-EQDSK data. If not provided, uses ``(5e16.9)``.
-    bdr_lim_fmt: Optional[str], default None
+    bdr_lim_fmt:
         Fortran IO format specifying the lengths of the boundary/limiter grids. If
         not provided, defaults to ``(2i5)``
-
-    Returns
-    -------
-    Dict[str, Union[int, float, np.ndarray]]
-        Dict of G-EQDSK data.
 
     Warns
     -----

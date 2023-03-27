@@ -27,13 +27,8 @@ def f2s(f: float) -> str:
 
     Parameters
     ----------
-    f: float
+    f:
         A single float to be converted to a string.
-
-    Returns
-    -------
-    str
-        Converted string.
     """
     return f"{' ' if f >= 0.0 else ''}{f:1.9E}"
 
@@ -44,11 +39,11 @@ class ChunkOutput:
 
     Parameters
     ---------
-    filehandle: TextIO
+    filehandle:
         Output to write to.
-    chunksize: int, default 5
+    chunksize:
         Number of values per line.
-    extraspaces: int, default 0
+    extraspaces:
         Number of extra spaces between outputs
     """
 
@@ -69,7 +64,7 @@ class ChunkOutput:
 
         Parameters
         ----------
-        value: Union[int, float, List[Any]]
+        value:
             Either a single int or float, or a list to output. If provided with a list,
             the function is called recursively on each element.
         """
@@ -126,9 +121,9 @@ def write_1d(values: Iterable[Any], out: ChunkOutput) -> None:
 
     Parameters
     ----------
-    values: Iterable[Any]
+    values:
         List of values to write.
-    out: ChunkOutput
+    out:
        File handle managed by a ``ChunkOutput`` object.
     """
     for value in values:
@@ -144,9 +139,9 @@ def write_2d(values: ArrayLike, out: ChunkOutput) -> None:
 
     Parameters
     ----------
-    values: ArrayLike
+    values:
         List of values to write.
-    out: ChunkOutput
+    out:
        File handle managed by a ``ChunkOutput`` object.
 
     Raises
@@ -171,7 +166,7 @@ def next_value(fh: TextIO) -> Generator[Union[int, float], None, None]:
 
     Parameters
     ----------
-    fh: TextIO
+    fh:
         File handle for text file to be read.
 
     Yields
@@ -207,15 +202,10 @@ def read_line(fh: TextIO, fmt: str) -> List[Any]:
 
     Parameters
     ---------
-    fh: TextIO
+    fh:
         File handle. Should be in a text read mode, i.e. ``open(filename, "r")``.
-    fmt: str
+    fmt:
         A Fortran format string, such as ``'(6a8,3i4)'``
-
-    Returns
-    -------
-    List[Any]
-        A list of the data read from the line.
 
     Raises
     ------
@@ -239,19 +229,14 @@ def read_array(shape: Union[int, str, ArrayLike], fh: TextIO, fmt: str) -> np.nd
 
     Parameters
     ---------
-    shape: Union[int, str, ArrayLike]
+    shape:
         The shape of the array to return. If provided as an int, a 1D array is returned
         of length ``shape``. If passed the string ``"all"``, will read until the end of
         the file.
-    fh: TextIO
+    fh:
         File handle. Should be in a text read mode, i.e. ``open(filename, "r")``.
-    fmt: str
+    fmt:
         A Fortran format string, such as ``'(5e16.9)'``
-
-    Returns
-    -------
-    np.ndarray
-        A filled NumPy array of the requested shape.
 
     Raises
     ------
@@ -321,11 +306,11 @@ def write_line(data: Iterable[Any], fh: TextIO, fmt: str) -> None:
 
     Parameters
     ---------
-    data: Iterable[Any]
+    data:
         The data to write.
-    fh: TextIO
+    fh:
         File handle. Should be in a text write mode, i.e. ``open(filename, "w")``.
-    fmt: str
+    fmt:
         A Fortran IO format string, such as ``'(6a8,3i3)'``.
     """
     fh.write(ff.FortranRecordWriter(fmt).write(data))
@@ -340,11 +325,11 @@ def write_array(arr: ArrayLike, fh: TextIO, fmt: str) -> None:
 
     Parameters
     ---------
-    arr: ArrayLike
+    arr:
         The array to write.
-    fh: TextIO
+    fh:
         File handle. Should be in a text write mode, i.e. ``open(filename, "w")``.
-    fmt: str
+    fmt:
         A Fortran IO format string, such as ``'(5e16.9)'``.
     """
     arr = np.asanyarray(arr)

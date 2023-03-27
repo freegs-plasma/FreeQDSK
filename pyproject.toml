@@ -34,10 +34,9 @@ tests = [
     "pytest-cov",
 ]
 docs = [
-    "sphinx == 3.5.4",
-    "myst_parser == 0.14.0",
-    "jinja2 < 3.1.0",
-    "sphinx_rtd_theme",
+    "sphinx >= 5.3",
+    "sphinx-book-theme >= 0.4.0rc1",
+    "sphinx_autodoc_typehints >= 1.19",
 ]
 dev = [
     "flake8",

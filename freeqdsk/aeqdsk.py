@@ -545,16 +545,16 @@ def write(
 
     Parameters
     ----------
-    data: Dict[str, Union[float, int, ArrayLike]]
+    data:
         The A-EQDSK data to write to disk. It may also include header information.
-    fh: TextIO
+    fh:
         File handle. Should be in a text write mode, i.e.``open(filename, "w")``.
-    data_fmt: Optional[str], default None
+    data_fmt:
         Fortran IO format for A-EQDSK data. If not provided, uses ``(e17.9,3e16.9)``.
-    extended_sizes_fmt: Optional[str], default None
+    extended_sizes_fmt:
         Fortran IO format for the line specifying array lengths in the extended portion
         of the A-EQDSK file. If not provided, uses ``(i6,3i5)``.
-    time_fmt: Optional[str], default None
+    time_fmt:
         Fortran IO format for time stamps. If not provided, uses ``(e17.9)``.
     """
     if data_fmt is None:
@@ -663,19 +663,14 @@ def read(
 
     Parameters
     ----------
-    fh: TextIO
+    fh:
         File handle to write to. Should be opened in a text read mode, i.e.
         ``open(filename, "r")``.
-    data_fmt: Optional[str], default None
+    data_fmt:
         Fortran IO format for A-EQDSK data. If not provided, uses ``(e17.9,3e16.9)``.
-    extended_sizes_fmt: Optional[str], default None
+    extended_sizes_fmt:
         Fortran IO format for the line specifying array lengths in the extended portion
         of the A-EQDSK file. If not provided, uses ``(i6,3i5)``.
-
-    Returns
-    -------
-    data: Dict[str, Union[float, int, np.ndarray]]
-        Dict of A-EQDSK data.
     """
     if data_fmt is None:
         data_fmt = _data_fmt
@@ -764,6 +759,8 @@ def read(
 
 
 # Dynamic docstring generation
+# This is done to automatically keep the docs up to date with any changes to the list
+# of fields.
 # TODO: Documentation does not fully describe header rows in A-EQDSK file
 
 
@@ -779,7 +776,7 @@ def _table_entry(field: Field) -> str:
             default_str = f"     - ``len({field.length_of})``"
         else:
             default_str = "     -"
-    return "\n".join((name_str, description_str, default_str))
+    return "\n".join((name_str, default_str, description_str))
 
 
 _docstrings = [
@@ -825,8 +822,8 @@ _docstrings = [
            :header-rows: 1
 
            * - Name
-             - Description
              - Default Value
+             - Description
         """
     )
 ]
@@ -847,8 +844,8 @@ _docstrings.append(
            :header-rows: 1
 
            * - Name
-             - Description
              - Default Value
+             - Description
         """
     )
 )
@@ -867,8 +864,8 @@ _docstrings.append(
            :header-rows: 1
 
            * - Name
-             - Description
              - Default Value
+             - Description
         """
     )
 )
@@ -889,8 +886,8 @@ _docstrings.append(
            :header-rows: 1
 
            * - Name
-             - Description
              - Default Value
+             - Description
         """
     )
 )
@@ -910,8 +907,8 @@ _docstrings.append(
            :header-rows: 1
 
            * - Name
-             - Description
              - Default Value
+             - Description
         """
     )
 )
@@ -930,8 +927,8 @@ _docstrings.append(
            :header-rows: 1
 
            * - Name
-             - Description
              - Default Value
+             - Description
         """
     )
 )
@@ -951,8 +948,8 @@ _docstrings.append(
            :header-rows: 1
 
            * - Name
-             - Description
              - Default Value
+             - Description
         """
     )
 )
