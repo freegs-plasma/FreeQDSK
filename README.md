@@ -27,6 +27,14 @@ $ python3 -m install .[tests]
 $ pytest -v
 ```
 
+To build the docs:
+
+```bash
+$ python3 -m install .[docs]
+$ cd docs
+$ make html
+```
+
 ## Usage
 
 A GEQDSK file may be read using the `geqdsk.read` function:

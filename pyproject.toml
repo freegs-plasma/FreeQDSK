@@ -5,6 +5,7 @@ readme = "README.md"
 authors = [
     {name = "Ben Dudson"},
     {name = "Peter Hill"},
+    {name = "Liam Pattinson"},
 ]
 license = {file = "LICENSE"}
 dynamic = ["version"]
@@ -23,7 +24,8 @@ classifiers = [
 
 requires-python = ">=3.8"
 dependencies = [
-    "numpy >= 1.8"
+    "numpy >= 1.8",
+    "fortranformat",
 ]
 
 [project.optional-dependencies]
@@ -31,14 +33,19 @@ tests = [
     "pytest >= 3.3.0",
     "pytest-cov",
 ]
+docs = [
+    "sphinx >= 5.3",
+    "sphinx-book-theme >= 0.4.0rc1",
+    "sphinx_autodoc_typehints >= 1.19",
+]
 dev = [
     "flake8",
     "black",
 ]
 
 [project.urls]
-Source = "https://github.com/PlasmaFAIR/FreeQDSK"
-Tracker = "https://github.com/PlasmaFAIR/FreeQDSK/issues"
+Source = "https://github.com/freegs-plasma/FreeQDSK"
+Tracker = "https://github.com/freegs-plasma/FreeQDSK/issues"
 
 [build-system]
 requires = [
