@@ -289,7 +289,7 @@ def read_array(shape: Union[int, str, ArrayLike], fh: TextIO, fmt: str) -> np.nd
                     "Additional elements were detected beyond the end of the "
                     "requested array. These have been discarded."
                 )
-                result = result[: shape]
+                result = result[:shape]
     return np.array(result)
 
 

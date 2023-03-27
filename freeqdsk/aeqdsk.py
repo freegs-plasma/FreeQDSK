@@ -502,15 +502,15 @@ def _len_field(field: Field, data: Dict[str, Union[float, int, ArrayLike]]) -> i
     Returns length field data from dict if present.
     Otherwise gets length from array (if present) or returns 0.
     """
-    if field.name in data:
-        # Check length of array, if present
-        if field.length_of in data and data[field.name] != len(data[field.length_of]):
-            raise ValueError(
-                f"'{field.name}' should be the length of the array '{field.length_of}'"
-            )
-        return int(data[field.name])
-    else:
+    if field.name not in data:
         return len(data.get(field.length_of, []))
+
+    # Check length of array
+    if field.length_of in data and data[field.name] != len(data[field.length_of]):
+        raise ValueError(
+            f"'{field.name}' should be the length of the array '{field.length_of}'"
+        )
+    return int(data[field.name])
 
 
 def _array_field(
@@ -521,16 +521,16 @@ def _array_field(
     Otherwise builds array of zeros of the supplied length (if present) or returns an
     empty array.
     """
-    if field.name in data:
-        result = np.asarray(data[field.name])
-        if result.ndim == 0:
-            result = np.array([result])
-        # Check length of array, if present
-        if field.has_length in data and len(data[field.name]) != data[field.has_length]:
-            raise ValueError(f"'{field.name}' should have length '{field.has_length}'")
-        return result
-    else:
+    if field.name not in data:
         return np.zeros(data.get(field.has_length, 0))
+
+    result = np.asarray(data[field.name])
+    if result.ndim == 0:
+        result = np.array([result])
+    # Check length of array, if present
+    if field.has_length in data and len(data[field.name]) != data[field.has_length]:
+        raise ValueError(f"'{field.name}' should have length '{field.has_length}'")
+    return result
 
 
 def write(
@@ -597,18 +597,24 @@ def write(
         )
     )
 
+    # Helper functions for writing each block
+    def write_fields(fields):
+        write_array([_float_field(field, data) for field in fields], fh, data_fmt)
+
+    def write_arrays(fields):
+        for field in fields:
+            write_array(_array_field(field, data), fh, data_fmt)
+
     # Output first block of general data
-    write_array([_float_field(field, data) for field in _general_block_1], fh, data_fmt)
+    write_fields(_general_block_1)
 
     # Output laser bits
-    for field in _laser_block:
-        write_array(_array_field(field, data), fh, data_fmt)
+    write_arrays(_laser_block)
 
     # Output second block of general data
-    write_array([_float_field(field, data) for field in _general_block_2], fh, data_fmt)
+    write_fields(_general_block_2)
 
     # Check if we need to write an extended section
-    extended = False
     extended_blocks = [
         _extended_sizes,
         _extended_arrays_1,
@@ -617,40 +623,37 @@ def write(
     ]
     for field in itertools.chain.from_iterable(extended_blocks):
         if field.name in data:
-            extended = True
             break
+    else:
+        # no extended fields were found
+        return
 
-    if extended:
-        # Write extended portion of the file
-        write_array(
-            [_len_field(field, data) for field in _extended_sizes],
-            fh,
-            extended_sizes_fmt,
-        )
+    # Write sizes of the extended arrays
+    write_array(
+        [_len_field(field, data) for field in _extended_sizes],
+        fh,
+        extended_sizes_fmt,
+    )
 
-        # First two arrays are joined
-        write_array(
-            np.concatenate([_array_field(field, data) for field in _extended_arrays_1]),
-            fh,
-            data_fmt,
-        )
+    # First two arrays are written as if they were a single array
+    write_array(
+        np.concatenate([_array_field(field, data) for field in _extended_arrays_1]),
+        fh,
+        data_fmt,
+    )
 
-        # Next two arrays are arranged in a standard pattern
-        for field in _extended_arrays_2:
-            write_array(_array_field(field, data), fh, data_fmt)
+    # Next two arrays are arranged in a standard pattern
+    write_arrays(_extended_arrays_2)
 
-        # Write a final general block
-        # Find the last field that is present within data. Write up to there and no
-        # further, filling default values on the way
-        last_field = 0
-        for idx, field in enumerate(_extended_general):
-            if field.name in data:
-                last_field = idx + 1
-        write_array(
-            [_float_field(field, data) for field in _extended_general[:last_field]],
-            fh,
-            data_fmt,
-        )
+    # Write a final general block
+    # Find the last line that is present within data. Write up to there and no
+    # further, filling default values on the way
+    last_field = 0
+    for idx, field in enumerate(_extended_general):
+        if field.name in data:
+            last_field = idx
+    last_field += -last_field % 4  # round up to nearest multiple of 4
+    write_fields(_extended_general[:last_field])
 
 
 def read(
@@ -747,7 +750,8 @@ def read(
         warnings.warn(
             "Encountered variables at the end of an A-EQDSK file that are not "
             "recognised by FreeQDSK. Please consider contributing to the project "
-            "and letting us know what these are!"
+            "and letting us know what these are! "
+            "https://github.com/freegs-plasma/FreeQDSK/"
         )
     # Zip only includes elements up to the shortest iterable provided. data will not
     # include elments that FreeQDSK doesn't recognise, nor will it store default values
