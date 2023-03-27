@@ -253,50 +253,44 @@ def read_array(shape: Union[int, str, ArrayLike], fh: TextIO, fmt: str) -> np.nd
         the requested size but there are still elements on the last line. These elements
         will be discarded, and the filehandle will move on the next line.
     """
-    # If shape is "all", re-run the function using a special tuple.
+    # If shape is "all", re-run the function using a special shape.
     # This instructs the function to read until end-of-file and return an array of
     # undetermined shape
-    shape_all = (-44379512921,)
+    shape_all = -44379512921
     if shape == "all":
         return read_array(shape_all, fh, fmt)
 
     shape = np.asanyarray(shape, dtype=int)
-    # Quit early if asking for empty array
-    if np.array_equal(shape, (0,)):
-        return np.array([])
 
-    if shape.ndim == 0:
-        # If given scalar, read 1D array with that length
-        return read_array((shape,), fh, fmt)
-    elif shape.ndim == 1:
-        # Return array with given shape
-        if len(shape) == 1:
-            # Read a 1D array and append to result list until finished
-            reader = ff.FortranRecordReader(fmt)
-            with _fortranformat_written_vars_only():
-                result = []
-                if np.array_equal(shape, shape_all):
-                    # Read until EOF
-                    for line in fh.readlines():
-                        result.extend(reader.read(line))
-                else:
-                    while len(result) < shape[0]:
-                        line = fh.readline()
-                        if not line:
-                            raise EOFError("Encountered EOF while reading array")
-                        result.extend(reader.read(line))
-                    if len(result) != shape[0]:
-                        warnings.warn(
-                            "Additional elements were detected beyond the end of the "
-                            "requested array. These have been discarded."
-                        )
-                        result = result[: shape[0]]
-            return np.array(result)
-        else:
-            # Read ND arrays as flattened 1D arrays, then reshape to requested shape
-            return read_array((np.prod(shape),), fh, fmt).reshape(shape, order="F")
-    else:
+    # Reject >1D shapes
+    if shape.ndim not in (0, 1):
         raise ValueError("'shape' should be a scalar or a 1D array")
+
+    # For ND arrays, read in the total number of elements, then reshape the result
+    if shape.ndim == 1:
+        return read_array(np.prod(shape), fh, fmt).reshape(shape, order="F")
+
+    # Read a 1D array and append to result list until finished
+    reader = ff.FortranRecordReader(fmt)
+    with _fortranformat_written_vars_only():
+        result = []
+        if shape == shape_all:
+            # Read until EOF
+            for line in fh.readlines():
+                result.extend(reader.read(line))
+        else:
+            while len(result) < shape:
+                line = fh.readline()
+                if not line:
+                    raise EOFError("Encountered EOF while reading array")
+                result.extend(reader.read(line))
+            if len(result) != shape:
+                warnings.warn(
+                    "Additional elements were detected beyond the end of the "
+                    "requested array. These have been discarded."
+                )
+                result = result[: shape]
+    return np.array(result)
 
 
 def write_line(data: Iterable[Any], fh: TextIO, fmt: str) -> None:
