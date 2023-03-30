@@ -25,6 +25,14 @@ atomic number, charge (in units of :math:`e`), and atomic mass of the ions::
      6.000000   6.000000   12.000000
      1.000000   1.000000   2.000000
      1.000000   1.000000   2.000000
+
+:: warning
+    whitespace is not conserved when reading and writing P-EQDSK files. If an external
+    P-EQDSK reader depends on a certain amount of whitespace between columns, further
+    processing of the generated files will be necessary. Please get in touch on our
+    `GitHub`_ page if this problem is affecting you.
+
+.. _GitHub: https://github.com/freegs-plasma/FreeQDSK/issues
 """
 
 import re
