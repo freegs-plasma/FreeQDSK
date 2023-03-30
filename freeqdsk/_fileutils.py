@@ -30,6 +30,10 @@ def f2s(f: float) -> str:
     f:
         A single float to be converted to a string.
     """
+    warnings.warn(
+        "freeqdsk._fileutils.f2s is deprecated, and will be removed in version 0.4",
+        DeprecationWarning,
+    )
     return f"{' ' if f >= 0.0 else ''}{f:1.9E}"
 
 
@@ -48,6 +52,11 @@ class ChunkOutput:
     """
 
     def __init__(self, filehandle: TextIO, chunksize: int = 5, extraspaces: int = 0):
+        warnings.warn(
+            "freeqdsk._fileutils.ChunkOutput is deprecated, and will be removed in "
+            "version 0.4",
+            DeprecationWarning,
+        )
         self.fh = filehandle
         self.counter = 0
         self.chunk = chunksize
@@ -126,6 +135,11 @@ def write_1d(values: Iterable[Any], out: ChunkOutput) -> None:
     out:
        File handle managed by a ``ChunkOutput`` object.
     """
+    warnings.warn(
+        "freeqdsk._fileutils.write_1d is deprecated, and will be removed in "
+        "version 0.4",
+        DeprecationWarning,
+    )
     for value in values:
         out.write(value)
     out.newline()
@@ -149,6 +163,11 @@ def write_2d(values: ArrayLike, out: ChunkOutput) -> None:
     ValueError
         If values is not a 2D array.
     """
+    warnings.warn(
+        "freeqdsk._fileutils.write_2d is deprecated, and will be removed in "
+        "version 0.4",
+        DeprecationWarning,
+    )
     # Alt: Check values is 2D, then write_1d(np.asarray(values).T.ravel(), out)
     nx, ny = np.shape(values)
     for y in range(ny):
@@ -175,6 +194,11 @@ def next_value(fh: TextIO) -> Generator[Union[int, float], None, None]:
         Yields either an int or a float, depending on whether the string contains a
         decimal point.
     """
+    warnings.warn(
+        "freeqdsk._fileutils.next_value is deprecated, and will be removed in "
+        "version 0.4",
+        DeprecationWarning,
+    )
     pattern = re.compile(r"[ +\-]?\d+(?:\.\d+(?:[Ee][\+\-]\d\d)?)?")
 
     # Go through each line, extract values, then yield them one by one
