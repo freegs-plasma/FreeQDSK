@@ -127,6 +127,17 @@ def test_read(tmp_path):
         assert value == expected_units[key]
 
 
+def test_read_dimensions():
+    # Read real data and check dimensionality
+    with open(_data_path / "test_1.peqdsk") as f:
+        profiles, species, units = peqdsk.read(f)
+    assert len(profiles) == 201
+    assert len(profiles.columns) == 43
+    assert len(species) == 3
+    assert len(species.columns) == 3
+    assert len(units) == 21  # no units for psinorm or derivatives
+
+
 @pytest.mark.parametrize("col", ["N", "Z", "A"])
 def test_write_bad_species(col, tmp_path):
     """Should fail if species is missing columns"""
