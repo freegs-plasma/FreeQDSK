@@ -4,7 +4,7 @@
 [![py3comp](https://img.shields.io/badge/py3-compatible-brightgreen.svg)](https://img.shields.io/badge/py3-compatible-brightgreen.svg)
 
 Read and write G-EQDSK, A-EQDSK, and P-EQDSK file formats, which are used to describe
-the conditions within tokamak fusion devices.
+the tokamak fusion devices.
 
 ## Installation
 
