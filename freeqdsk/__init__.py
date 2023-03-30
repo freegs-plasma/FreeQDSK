@@ -1,4 +1,4 @@
-__all__ = ["geqdsk", "aeqdsk"]
+__all__ = ["geqdsk", "aeqdsk", "peqdsk"]
 
 from importlib.metadata import version, PackageNotFoundError
 
@@ -10,3 +10,4 @@ except PackageNotFoundError:
 
 from . import aeqdsk
 from . import geqdsk
+from . import peqdsk
