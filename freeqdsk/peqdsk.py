@@ -25,190 +25,187 @@ atomic number, charge (in units of :math:`e`), and atomic mass of the ions::
      6.000000   6.000000   12.000000
      1.000000   1.000000   2.000000
      1.000000   1.000000   2.000000
-
-:: warning
-    whitespace is not conserved when reading and writing P-EQDSK files. If an external
-    P-EQDSK reader depends on a certain amount of whitespace between columns, further
-    processing of the generated files will be necessary. Please get in touch on our
-    `GitHub`_ page if this problem is affecting you.
-
-.. _GitHub: https://github.com/freegs-plasma/FreeQDSK/issues
 """
 
+import csv
 import re
-from io import StringIO
-from typing import Dict, Generator, NamedTuple, TextIO
+from typing import Dict, Generator, List, TextIO, Tuple, TypedDict, Union
 
-import pandas as pd
+import numpy as np
 
 
-class PEQDSKData(NamedTuple):
+class ProfileDict(TypedDict):
     r"""
-    NamedTuple containig a DataFrame of profiles and species. Returned by the
-    `peqdsk.read` function.
+    TypedDict describing an individual kinetics profile.
     """
-    #: Kinetics profiles, such as density, temperature, etc. and their derivatives with
-    #: respect to :math:`\psi_N`.
-    profiles: pd.DataFrame
+    #: :math:`\psi_N` grid, where :math:`\psi_N=0` on the magnetic axis and
+    #: :math:`\psi_N=1` on the last closed flux surface
+    psinorm: np.ndarray
 
-    #: Atomic number, charge, and atomic mass of each species.
-    species: pd.DataFrame
+    #: Kinetics profile
+    data: np.ndarray
 
-    #: The units of each profile.
-    units: Dict[str, str]
+    #: Derivative of ``profile`` with respect to ``psinorm``
+    derivative: np.ndarray
+
+    #: Units of ``profile``
+    units: str
 
 
-def _peqdsk_blocks(fh: TextIO) -> Generator[pd.DataFrame, None, None]:
+class SpeciesDict(TypedDict):
     r"""
-    Given a file handle, reads a block from a P-EQDSK file into a Pandas DataFrame.
-    Advances the file handle to the next block.
+    TypedDict describing each species.
+    """
+    #: Atomic number
+    N: float
+
+    #: Charge (units of :math:`e`)
+    Z: float
+
+    #: Atomic mass
+    A: float
+
+
+class PEQDSKDict(TypedDict):
+    r"""
+    TypedDict returned by the read function.
+    """
+    #: Dict of kinetics profiles. The names of each profile are used as keys, while
+    #: the data is presented in a ``ProfileDict``.
+    profile: Dict[str, ProfileDict]
+
+    #: List of species.
+    species: List[SpeciesDict]
+
+
+_newline = "\n"
+
+#: keywords to pass to ``csv.reader/writer``
+_fmt_kwargs = {
+    "delimiter": " ",
+    "skipinitialspace": True,
+    "quoting": csv.QUOTE_NONNUMERIC,
+    "lineterminator": _newline,
+}
+
+
+def _read_peqdsk_blocks(
+    fh: TextIO,
+) -> Generator[Tuple[str, Union[ProfileDict, List[SpeciesDict]]], None, None]:
+    r"""
+    Given a file handle, reads a block from a P-EQDSK file and returns either profile
+    data or species data. When reading profile data, the first object returned will
+    be the name of the profile. When reading species data, the first object returned
+    will be the string ``"__species__"``.
 
     Parameters
     ----------
     fh:
         File handle to read from.
     """
-    # Each block starts with a header containing the number of lines in the block and
-    # the column names. As pandas can't handle the exact csv format of a P-EQDSK file,
-    # we read each block into a string buffer, and then pass that to pandas to create
-    # each dataframe.
     while True:
         header = fh.readline().split()
         if not header:  # EOF
             return
         nrows = int(header[0])
-        buf = StringIO("".join(fh.readline() for _ in range(nrows)))
-        yield pd.read_csv(buf, names=header[1:4], delim_whitespace=True)
+
+        if header[-1] == "SPECIES":
+            reader = csv.DictReader(fh, fieldnames=("N", "Z", "A"), **_fmt_kwargs)
+            species = []
+            for _, row in zip(range(nrows), reader):
+                species.append(row)
+
+            yield "__species__", species
+
+        else:
+            # Get name and units
+            match = re.search(r"(.*)\((.*)\)", header[2])
+            if match is None:
+                raise ValueError(f"Unrecognised header format: '{' '.join(header)}'")
+            name = match[1]
+            units = match[2]
+
+            # Read each row into a numpy array
+            reader = csv.reader(fh, **_fmt_kwargs)
+            psinorm = np.empty(nrows)
+            data = np.empty(nrows)
+            derivative = np.empty(nrows)
+            for idx, row in zip(range(nrows), reader):
+                psinorm[idx], data[idx], derivative[idx] = row
+
+            # Assemble into ProfileDict and return
+            profile: ProfileDict = {
+                "psinorm": psinorm,
+                "data": data,
+                "derivative": derivative,
+                "units": units,
+            }
+            yield name, profile
 
 
-def read(fh: TextIO) -> PEQDSKData:
+def read(fh: TextIO) -> PEQDSKDict:
     r"""
-    Given a file handle, reads a P-EQDSK file and returns a named tuple containing
-    profile and species data. See the examples below for methods for retrieving this
-    info.
+    Given a file handle, reads a P-EQDSK file and returns a dict containing
+    profile and species data.
+
+    The returned dict has two entries:
+
+    - ``data["profiles"]`` is a dict of keys and ``ProfileDict``. For example,
+      to access the electron density data, use ``data["profiles"]["ne"]["data"]``. To
+      access the ion density dervative with respect to :math:`\psi_N`, use
+      ``data["profiles"]["ni"]["derivative"]``.
+    - ``data["species"]`` is a list of ``SpeciesDict``. To access the atomic number of
+      the first entry, use ``data["species"][0]["N"]``.
 
     Parameters
     ----------
     fh:
         File handle. Should be in a text read mode, ``open(filename, "r")``.
-
-    Examples
-    --------
-
-    As a named tuple::
-
-        >>> with open("myfile.peqdsk") as f:
-        ...    data = peqdsk.read(f)
-        >>> profiles = data.profiles
-        >>> species = data.species
-        >>> units = data.units
-
-    With tuple unpacking::
-
-        >>> with open("myfile.peqdsk") as f:
-        ...    profiles, species, units = peqdsk.read(f)
-
-    Read only one type of data::
-
-        >>> with open("myfile.peqdsk") as f:
-        ...    data = peqdsk.read(f).profiles
     """
-    blocks = _peqdsk_blocks(fh)
-    profiles = next(blocks)
-    species = pd.DataFrame()
-    for df in blocks:
-        if "psinorm" in df.columns:
-            profiles = profiles.merge(df)
+    profiles = {}
+    species = {}
+    for name, block in _read_peqdsk_blocks(fh):
+        if name == "__species__":
+            species = block
         else:
-            species = df
-    units = {}
-    cols_to_rename = []
-    for col_name in profiles.columns:
-        match = re.search(r"(.*)\((.*)\)", col_name)
-        if match is not None:
-            cols_to_rename.append(col_name)
-            units[match[1]] = match[2]
-    profiles.rename(columns=dict(zip(cols_to_rename, units)), inplace=True)
-    return PEQDSKData(profiles, species, units)
+            profiles[name] = block
+    result: PEQDSKDict = {"profiles": profiles, "species": species}
+    return result
 
 
-def _write_block(df: pd.DataFrame, units: Dict[str, str], fh: TextIO) -> None:
+def _write_profile(name: str, profile: ProfileDict, fh: TextIO) -> None:
     """
-    Utility function for writing each block to a file handle.
-
-    Parameters
-    ----------
-    df:
-        Pandas dataframe to write
-    units:
-        Dict of units to add to the column names
-    fh:
-        File handle.
+    Utility function for writing each profile block to a file handle.
     """
-    # Write header separately to include nrows and add units
-    cols = [(f"{col}({units[col]})" if col in units else col) for col in df.columns]
-    if all(x in cols for x in ("N", "Z", "A")):
-        cols.append("of ION SPECIES")
-    fh.write(" ".join([str(len(df))] + cols) + "\n")
-    # Write to string buffer, then out to file, as otherwise pandas will close the
-    # file handle
-    buf = StringIO()
-    df.to_csv(buf, sep=" ", float_format="%.6f", header=False, index=False)
-    buf.seek(0)
-    fh.write(buf.read())
+    nrows = len(profile["psinorm"])
+    header = f"{nrows} psinorm {name}({profile['units']}) d{name}/dpsiN{_newline}"
+    fh.write(header)
+    for psi, x, dx in zip(profile["psinorm"], profile["data"], profile["derivative"]):
+        # Rather than using built-in csv writer, using f-strings as they give more
+        # control over whitespace
+        fh.write(f" {psi:.6f}   {x:.6f}   {dx:.6f}{_newline}")
 
 
-def write(
-    profiles: pd.DataFrame,
-    species: pd.DataFrame,
-    units: Dict[str, str],
-    fh: TextIO,
-) -> None:
+def write(data: PEQDSKDict, fh: TextIO) -> None:
     r"""
-    Given a file handle and the components of a PEQDSKData named tuple object, write a
-    P-EQDSK file. See the examples below for examples of how to use this function.
+    Given a file handle and a ``PEQDSKDict`` dict, write a P-EQDSK file. The provided
+    dict should have the same structure as that returned by the ``read`` function.
 
     Parameters
     ----------
-    profiles:
-        Pandas DataFrame containing kinetics profile data with respect to ``"psinorm"``.
-    species:
-        Pandas DataFrame containing atomic number, charge number, and mass number for
-        the impurity, majority, and fast ion species.
-    units: Dict[str,str],
-        A dict of units for the columns within profiles.
+    data:
+        Dict of P-EQDSK data. Should be in the format of a ``PEQDSKDict``, which is
+        itself composed of ``ProfileDict`` and ``SpeciesDict`` dicts.
     fh:
         File handle. Should be opened in a text write mode, ``open(filename, "w")``.
-
-    Raises
-    ------
-    ValueError
-        If ``"psinorm"`` is missing from profiles, or the species DataFrame is
-        malformed.
-
-    Examples
-    --------
-
-    If we read a file as follows::
-
-        >>> with open("myfile.peqdsk") as f:
-        ...    data = peqdsk.read(f)
-
-    We can write by referencing each component of ``data`` in turn::
-
-        >>> with open("newfile.peqdsk", "w") as f:
-        ...    peqdsk.write(data.profiles, data.species, data.units, f)
-
-    Or we can simplify this using tuple unpacking::
-
-        >>> with open("newfile.peqdsk", "w") as f:
-        ...    peqdsk.write(*data, f)
     """
-    if "psinorm" not in profiles:
-        raise ValueError("profiles DataFrame missing 'psinorm'")
-    if not all(species.columns == ["N", "Z", "A"]):
-        raise ValueError("species DataFrame has incorrect column headings")
+    for name, profile in data["profiles"].items():
+        _write_profile(name, profile, fh)
 
-    for cols in zip(profiles.columns[1::2], profiles.columns[2::2]):
-        _write_block(profiles[["psinorm", *cols]], units, fh)
-    _write_block(species, {}, fh)
+    n_species = len(data["species"])
+    fh.write(f"{n_species} N Z A of ION SPECIES{_newline}")
+    for species in data["species"]:
+        N, Z, A = species["N"], species["Z"], species["A"]
+        # Rather than using built-in csv writer, using f-strings as they give more
+        # control over whitespace
+        fh.write(f" {N:6f}   {Z:6f}   {A:6f}{_newline}")

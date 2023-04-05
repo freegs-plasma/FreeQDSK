@@ -65,28 +65,14 @@ with open(filename, "w") as f:
     aeqdsk.write(data, f)
 ```
 
-P-EQDSK files are read into a [namedtuple][namedtuple] containing the fields `profiles`,
-`species`, and `units`. Both `profiles` and `species` are
-[Pandas DataFrames](dataframe), while `units` is a dict containing units for the columns
-in `profiles`.
+And again for P-EQDSK files:
 
 ```python
 from freeqdsk import peqdsk
 
 with open(filename, "r") as f:
-    profiles, species, units = peqdsk.read(f)
-
-with open(filename, "w") as f:
-    peqdsk.write(profiles, species, units, f)
-
-# Alternative syntax:
-
-with open(filename, "r") as f:
     data = peqdsk.read(f)
 
 with open(filename, "w") as f:
-    peqdsk.write(*data, f)
+    peqdsk.write(data, f)
 ```
-
-[namedtuple]: https://docs.python.org/3/library/collections.html#collections.namedtuple
-[dataframe]: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html

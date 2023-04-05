@@ -3,7 +3,6 @@ from pathlib import Path
 from textwrap import dedent
 
 import numpy as np
-import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
@@ -17,45 +16,55 @@ def test_roundtrip():
     with open(_data_path / "test_1.peqdsk") as f:
         data = peqdsk.read(f)
     output = StringIO()
-    peqdsk.write(*data, output)
+    peqdsk.write(data, output)
 
-    # Read from the string buffer, ensure all elements are equivalent
+    # Read back from the string buffer
     output.seek(0)
     data2 = peqdsk.read(output)
-    assert_allclose(data.profiles, data2.profiles)
-    assert_allclose(data.species, data2.species)
-    for key, value in data.units.items():
-        assert data2.units[key] == value
+
+    # Ensure all elements are equivalent
+    for name, profile in data["profiles"].items():
+        assert name in data2["profiles"]
+        assert profile["units"] == data2["profiles"][name]["units"]
+        assert_allclose(profile["psinorm"], data2["profiles"][name]["psinorm"])
+        assert_allclose(profile["data"], data2["profiles"][name]["data"])
+        assert_allclose(profile["derivative"], data2["profiles"][name]["derivative"])
+    for species1, species2 in zip(data["species"], data2["species"]):
+        assert_allclose(species1["N"], species2["N"])
+        assert_allclose(species1["Z"], species2["Z"])
+        assert_allclose(species1["A"], species2["A"])
 
 
 def test_write(tmp_path):
     # Create artificial data
     psinorm = np.linspace(0.0, 1.0, 5)
     arr = np.arange(5, dtype=float)
-    profiles = pd.DataFrame(
-        data={
+    profiles = {
+        "x": {
             "psinorm": psinorm,
-            "x": arr,
-            "dx/dpsiN": 5 * np.ones(5),
-            "y": 2 * arr,
-            "dy/dpsiN": 10 * np.ones(5),
-        }
-    )
-    species = pd.DataFrame(
-        data={
-            "N": [3.0, 1.0, 1.0],
-            "Z": [3.0, 1.0, 1.0],
-            "A": [6.0, 2.0, 2.0],
-        }
-    )
-    units = {"x": "ft.lb", "y": "fl oz"}
+            "data": arr,
+            "derivative": 5 * np.ones(5),
+            "units": "ft.lb",
+        },
+        "y": {
+            "psinorm": psinorm,
+            "data": 2 * arr,
+            "derivative": 10 * np.ones(5),
+            "units": "fl oz",
+        },
+    }
+    species = [
+        {"N": 3.0, "Z": 3.0, "A": 6.0},
+        {"N": 1.0, "Z": 1.0, "A": 2.0},
+        {"N": 1.0, "Z": 1.0, "A": 2.0},
+    ]
 
     # Write to temp file
     d = tmp_path / "peqdsk"
     d.mkdir(exist_ok=True)
     out = d / "test_write.peqdsk"
     with open(out, "w") as f:
-        peqdsk.write(profiles, species, units, f)
+        peqdsk.write({"profiles": profiles, "species": species}, f)
 
     # Read line by line, check correctness
     with open(out) as f:
@@ -101,90 +110,131 @@ def test_read(tmp_path):
     with open(out, "w") as f:
         f.write(pfile)
     # Check it matched expected values
-    expected_profiles = pd.DataFrame(
-        data={
-            "psinorm": [0.0, 0.5, 1.0],
-            "a": [1.5, 0.5, -0.5],
-            "da/dpsiN": [-1.0, -1.0, -1.0],
-            "b": [-3.0, -1.0, 1.0],
-            "db/dpsiN": [2.0, 2.0, 2.0],
-        }
-    )
-    expected_species = pd.DataFrame(
-        data={
-            "N": [4.0, 1.0, 1.0],
-            "Z": [4.0, 1.0, 1.0],
-            "A": [8.0, 2.0, 2.0],
-        }
-    )
-    expected_units = {"a": "m", "b": "kg"}
+    expected_profiles = {
+        "a": {
+            "psinorm": np.array([0.0, 0.5, 1.0]),
+            "data": np.array([1.5, 0.5, -0.5]),
+            "derivative": np.array([-1.0, -1.0, -1.0]),
+            "units": "m",
+        },
+        "b": {
+            "psinorm": np.array([0.0, 0.5, 1.0]),
+            "data": np.array([-3.0, -1.0, 1.0]),
+            "derivative": np.array([2.0, 2.0, 2.0]),
+            "units": "kg",
+        },
+    }
+    expected_species = [
+        {"N": 4.0, "Z": 4.0, "A": 8.0},
+        {"N": 1.0, "Z": 1.0, "A": 2.0},
+        {"N": 1.0, "Z": 1.0, "A": 2.0},
+    ]
     with open(out) as f:
-        profiles, species, units = peqdsk.read(f)
+        data = peqdsk.read(f)
+    actual_profiles = data["profiles"]
+    actual_species = data["species"]
 
-    assert_allclose(profiles, expected_profiles)
-    assert_allclose(species, expected_species)
-    for key, value in units.items():
-        assert value == expected_units[key]
+    for name, expected in expected_profiles.items():
+        actual = actual_profiles[name]
+        assert_allclose(expected["psinorm"], actual["psinorm"])
+        assert_allclose(expected["data"], actual["data"])
+        assert_allclose(expected["derivative"], actual["derivative"])
+        assert expected["units"] == actual["units"]
+
+    for expected, actual in zip(expected_species, actual_species):
+        assert_allclose(expected["N"], actual["N"])
+        assert_allclose(expected["Z"], actual["Z"])
+        assert_allclose(expected["A"], actual["A"])
 
 
 def test_read_dimensions():
     # Read real data and check dimensionality
     with open(_data_path / "test_1.peqdsk") as f:
-        profiles, species, units = peqdsk.read(f)
-    assert len(profiles) == 201
-    assert len(profiles.columns) == 43
-    assert len(species) == 3
-    assert len(species.columns) == 3
-    assert len(units) == 21  # no units for psinorm or derivatives
+        data = peqdsk.read(f)
+    assert len(data["profiles"]) == 21
+    assert len(data["species"]) == 3
+    for profile in data["profiles"].values():
+        assert len(profile["psinorm"]) == 201
+        assert len(profile["data"]) == 201
+        assert len(profile["derivative"]) == 201
+    for species in data["species"]:
+        assert len(species) == 3
 
 
-@pytest.mark.parametrize("col", ["N", "Z", "A"])
-def test_write_bad_species(col, tmp_path):
+def test_write_bad_species(tmp_path):
     """Should fail if species is missing columns"""
-    profiles = pd.DataFrame(
-        data={
-            "psinorm": [0.0, 1.0],
-            "x": [0.0, 1.0],
-            "dx/dpsiN": [1.0, 1.0],
+    profiles = {
+        "x": {
+            "psinorm": np.array([0.0, 1.0]),
+            "data": np.array([0.0, 1.0]),
+            "derivative": np.array([1.0, 1.0]),
+            "units": "s",
         }
-    )
-    units = {"x": "s"}
-    species = pd.DataFrame(
-        data={
-            "N": [6.0, 1.0, 1.0],
-            "Z": [6.0, 1.0, 1.0],
-            "A": [12.0, 2.0, 2.0],
-        }
-    )
-    species.rename(columns={col: "X"}, inplace=True)
+    }
+    species = [
+        {"N": 6.0, "Z": 6.0, "A": 12.0},
+        {"N": 1.0, "Z": 1.0},  # missing "A"
+        {"N": 1.0, "Z": 1.0, "A": 2.0},
+    ]
     # Write to temp file
     d = tmp_path / "peqdsk"
     d.mkdir(exist_ok=True)
     out = d / "test_write_bad_species.peqdsk"
-    with open(out, "w") as f, pytest.raises(ValueError):
-        peqdsk.write(profiles, species, units, f)
+    with open(out, "w") as f, pytest.raises(KeyError):
+        peqdsk.write({"profiles": profiles, "species": species}, f)
 
 
 def test_write_bad_profiles(tmp_path):
-    """Should fail if profiles is missing psinorm"""
-    profiles = pd.DataFrame(
-        data={
-            "psinorm": [0.0, 1.0],
-            "x": [0.0, 1.0],
-            "dx/dpsiN": [1.0, 1.0],
+    """Should fail if profiles is missing data"""
+    # missing psinorm
+    profiles = {
+        "x": {
+            "data": np.array([0.0, 1.0]),
+            "derivative": np.array([1.0, 1.0]),
+            "units": "s",
         }
-    )
-    units = {"x": "s"}
-    species = pd.DataFrame(
-        data={
-            "N": [6.0, 1.0, 1.0],
-            "Z": [6.0, 1.0, 1.0],
-            "A": [12.0, 2.0, 2.0],
-        }
-    )
+    }
+    species = [
+        {"N": 6.0, "Z": 6.0, "A": 12.0},
+        {"N": 1.0, "Z": 1.0, "A": 2.0},
+        {"N": 1.0, "Z": 1.0, "A": 2.0},
+    ]
     # Write to temp file
     d = tmp_path / "peqdsk"
     d.mkdir(exist_ok=True)
     out = d / "test_write_bad_profiles.peqdsk"
-    with open(out, "w") as f, pytest.raises(ValueError):
-        peqdsk.write(profiles[["x", "dx/dpsiN"]], species, units, f)
+    with open(out, "w") as f, pytest.raises(KeyError):
+        peqdsk.write({"profiles": profiles, "species": species}, f)
+
+
+def test_write_missing_profiles(tmp_path):
+    """Should fail if profiles is missing"""
+    species = [
+        {"N": 6.0, "Z": 6.0, "A": 12.0},
+        {"N": 1.0, "Z": 1.0, "A": 2.0},
+        {"N": 1.0, "Z": 1.0, "A": 2.0},
+    ]
+    # Write to temp file
+    d = tmp_path / "peqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "test_write_missing_profiles.peqdsk"
+    with open(out, "w") as f, pytest.raises(KeyError):
+        peqdsk.write({"species": species}, f)
+
+
+def test_write_missing_species(tmp_path):
+    """Should fail if species is missing"""
+    profiles = {
+        "x": {
+            "psinorm": np.array([0.0]),  # psinorm too short
+            "data": np.array([0.0, 1.0]),
+            "derivative": np.array([1.0, 1.0]),
+            "units": "s",
+        }
+    }
+    # Write to temp file
+    d = tmp_path / "peqdsk"
+    d.mkdir(exist_ok=True)
+    out = d / "test_write_missing_species.peqdsk"
+    with open(out, "w") as f, pytest.raises(KeyError):
+        peqdsk.write({"profiles": profiles}, f)
