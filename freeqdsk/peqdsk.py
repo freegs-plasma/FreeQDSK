@@ -103,6 +103,7 @@ def _read_peqdsk_blocks(
     fh:
         File handle to read from.
     """
+    units_regex = re.compile(r"(?P<name>.*)\((?P<units>.*)\)")
     while True:
         header = fh.readline().split()
         if not header:  # EOF
@@ -116,31 +117,31 @@ def _read_peqdsk_blocks(
                 species.append(row)
 
             yield "__species__", species
+            continue
 
-        else:
-            # Get name and units
-            match = re.search(r"(.*)\((.*)\)", header[2])
-            if match is None:
-                raise ValueError(f"Unrecognised header format: '{' '.join(header)}'")
-            name = match[1]
-            units = match[2]
+        # Get name and units
+        match = units_regex.search(header[2])
+        if match is None:
+            raise ValueError(f"Unrecognised header format: '{' '.join(header)}'")
+        name = match["name"]
+        units = match["units"]
 
-            # Read each row into a numpy array
-            reader = csv.reader(fh, **_fmt_kwargs)
-            psinorm = np.empty(nrows)
-            data = np.empty(nrows)
-            derivative = np.empty(nrows)
-            for idx, row in zip(range(nrows), reader):
-                psinorm[idx], data[idx], derivative[idx] = row
+        # Read each row into a numpy array
+        reader = csv.reader(fh, **_fmt_kwargs)
+        psinorm = np.empty(nrows)
+        data = np.empty(nrows)
+        derivative = np.empty(nrows)
+        for idx, row in zip(range(nrows), reader):
+            psinorm[idx], data[idx], derivative[idx] = row
 
-            # Assemble into ProfileDict and return
-            profile: ProfileDict = {
-                "psinorm": psinorm,
-                "data": data,
-                "derivative": derivative,
-                "units": units,
-            }
-            yield name, profile
+        # Assemble into ProfileDict and return
+        profile: ProfileDict = {
+            "psinorm": psinorm,
+            "data": data,
+            "derivative": derivative,
+            "units": units,
+        }
+        yield name, profile
 
 
 def read(fh: TextIO) -> PEQDSKDict:
