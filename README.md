@@ -3,8 +3,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://img.shields.io/badge/license-MIT-blue.svg)
 [![py3comp](https://img.shields.io/badge/py3-compatible-brightgreen.svg)](https://img.shields.io/badge/py3-compatible-brightgreen.svg)
 
-Read and write the popular "geqdsk" and "aeqdsk" tokamak equilibrium
-file formats.
+Read and write G-EQDSK, A-EQDSK, and P-EQDSK file formats, which are used to describe
+the tokamak fusion devices.
 
 ## Installation
 
@@ -37,22 +37,23 @@ $ make html
 
 ## Usage
 
-A GEQDSK file may be read using the `geqdsk.read` function:
+A G-EQDSK file may be read using the `geqdsk.read` function:
 
 ```python
 from freeqdsk import geqdsk
+
 with open(filename, "r") as f:
     data = geqdsk.read(f)
 ```
 
-The result is a dict containing data from the GEQDSK file. To write a file:
+The result is a dict containing data from the G-EQDSK file. To write a file:
 
 ```python
 with open(filename, "w") as f:
     geqdsk.write(data, f)
 ```
 
-Similarly, for AEQDSK files:
+Similarly, for A-EQDSK files:
 
 ```python
 from freeqdsk import aeqdsk
@@ -62,4 +63,16 @@ with open(filename, "r") as f:
 
 with open(filename, "w") as f:
     aeqdsk.write(data, f)
+```
+
+And again for P-EQDSK files:
+
+```python
+from freeqdsk import peqdsk
+
+with open(filename, "r") as f:
+    data = peqdsk.read(f)
+
+with open(filename, "w") as f:
+    peqdsk.write(data, f)
 ```
