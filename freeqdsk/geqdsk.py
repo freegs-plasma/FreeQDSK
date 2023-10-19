@@ -100,6 +100,36 @@ Note that these grids are interleaved, so are expressed as:
 ...          ...          ...          ...          ...
 ============ ============ ============ ============ ============
 
+++++++++++++++++++++++++++++++++
+A note on coordinate conventions
+++++++++++++++++++++++++++++++++
+
+Various conventions regarding the orientation of the toroidal angle
+:math:`\varphi` and the poloidal angle :math:`\theta` are in use.  For example,
+if looking from the top :math:`\nabla\varphi = \frac{1}{R}\hat e_\varphi` can
+either point clockwise or counter-clockwise depending on whether
+:math:`(R,Z,\varphi)` or :math:`(R,\varphi,Z)` is used as cylindrical
+coordinates.  This observations led to the formal definition of the COCOS
+conventions in
+`O. Sauter and S. Y Medvedev, "Tokamak Coordinate Conventions: COCOS", Comput.
+Phys. Commun. 184 (2013) 293
+<https://crppwww.epfl.ch/~sauter/cocos/Sauter_COCOS_Tokamak_Coordinate_Conventions.pdf>`_
+From the paper the magnetic field can be generally expressed as
+
+.. math::
+   \vec B = F(\psi) \nabla \varphi + \sigma_{B_p} \frac{1}{(2\pi)^{e_{B_p}}}
+   \nabla\varphi \times \nabla\psi
+
+where :math:`\sigma_{B_P} = \pm 1` and :math:`e_{B_p} \in \{ 0,1\}` depends on
+the convention in use.  The orientation of the poloidal angle :math:`\theta`
+largely affects the sign of :math:`q` (if :math:`(\rho,\theta,\varphi)` is
+right-handed then q is positive for right-handed field winding while if
+:math:`(\rho,\theta,\varphi)` is left-handed then q is positive for left-handed
+winding).  However, some tools define q as always positive so the paper warns
+against using it as a consistency check.
+
+Note the table of conventions in https://crppwww.epfl.ch/~sauter/cocos/
+
 SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 
 SPDX-License-Identifier: MIT
