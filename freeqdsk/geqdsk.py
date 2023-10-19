@@ -57,7 +57,7 @@ This is then followed by a series of grids:
 ======= ========================================================================
 fpol    Poloidal current function :math:`F(\psi)=RB_t`, 1D array [meter * tesla]
 pres    Plasma pressure :math:`p(\psi)`, 1D array [pascal]
-ffprime :math:`FF'(\psi)=RB_t`, 1D array [meter**2 * tesla**2 * radian / weber]
+ffprime :math:`FF'(\psi)`, 1D array [meter**2 * tesla**2 * radian / weber]
 pprime  :math:`p'(\psi)`, 1D array [pascal * radian / weber]
 psi     Poloidal flux :math:`\psi`, 2D array [weber / radian]
 qpsi    Safety factor :math:`q(\psi)`, 1D array [dimensionless]
