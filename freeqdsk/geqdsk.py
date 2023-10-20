@@ -10,20 +10,20 @@ make use of G-EQDSK files include, but are not limited to:
 
 G-EQDSK files begin with a header line containing the following information:
 
-- A comment 48 characters in length. This normally includes information such as the
+- ``comment`` A comment 48 characters in length. This normally includes information such as the
   software used to generate the file, the date of creation, a shot number, and the
   time frame within the shot. Unfortunately, the format of this line is not
   rigorously defined, so each code will tend to define it differently. FreeQDSK
   currently assumes a FreeGS-style comment, but this may be expanded to other
   comment styles in a future update.
-- A mysterious integer of unknown purpose, with a width of 4 characters.
-- The number of points in the R direction, expressed as an integer with a width of
+- ``int`` A mysterious integer of unknown purpose, with a width of 4 characters.
+- ``nx`` The number of points in the R direction, expressed as an integer with a width of
   four characters.
-- The number of points in the Z direction, expressed as an integer with a width of
+- ``ny`` The number of points in the Z direction, expressed as an integer with a width of
   four characters.
 
 
-The Fortran format for the header can be expressed ``(a48,3i4)``. This is followed
+The Fortran format for the header can be expressed as ``(a48,3i4)``. This is followed
 by 4 lines of floats describing a tokamak plasma equilibrium. Each line contains 5
 floats, following the Fortran format ``(5e16.9)``. These floats are:
 
@@ -57,7 +57,7 @@ This is then followed by a series of grids:
 ======= ========================================================================
 fpol    Poloidal current function :math:`F(\psi)=RB_t`, 1D array [meter * tesla]
 pres    Plasma pressure :math:`p(\psi)`, 1D array [pascal]
-ffprime :math:`FF'(\psi)=RB_t`, 1D array [meter**2 * tesla**2 * radian / weber]
+ffprime :math:`FF'(\psi)`, 1D array [meter**2 * tesla**2 * radian / weber]
 pprime  :math:`p'(\psi)`, 1D array [pascal * radian / weber]
 psi     Poloidal flux :math:`\psi`, 2D array [weber / radian]
 qpsi    Safety factor :math:`q(\psi)`, 1D array [dimensionless]
@@ -99,6 +99,36 @@ Note that these grids are interleaved, so are expressed as:
 ``zbdry[2]`` ``rbdry[3]`` ``zbdry[3]`` ``rbdry[4]`` ``rbdry[4]``
 ...          ...          ...          ...          ...
 ============ ============ ============ ============ ============
+
+++++++++++++++++++++++++++++++++
+A note on coordinate conventions
+++++++++++++++++++++++++++++++++
+
+Various conventions regarding the orientation of the toroidal angle
+:math:`\varphi` and the poloidal angle :math:`\theta` are in use.  For example,
+if looking from the top :math:`\nabla\varphi = \frac{1}{R}\hat e_\varphi` can
+either point clockwise or counter-clockwise depending on whether
+:math:`(R,Z,\varphi)` or :math:`(R,\varphi,Z)` is used as cylindrical
+coordinates.  This observations led to the formal definition of the COCOS
+conventions in
+`O. Sauter and S. Y Medvedev, "Tokamak Coordinate Conventions: COCOS", Comput.
+Phys. Commun. 184 (2013) 293
+<https://crppwww.epfl.ch/~sauter/cocos/Sauter_COCOS_Tokamak_Coordinate_Conventions.pdf>`_
+From the paper the magnetic field can be generally expressed as
+
+.. math::
+   \vec B = F(\psi) \nabla \varphi + \sigma_{B_p} \frac{1}{(2\pi)^{e_{B_p}}}
+   \nabla\varphi \times \nabla\psi
+
+where :math:`\sigma_{B_P} = \pm 1` and :math:`e_{B_p} \in \{ 0,1\}` depends on
+the convention in use.  The orientation of the poloidal angle :math:`\theta`
+largely affects the sign of :math:`q` (if :math:`(\rho,\theta,\varphi)` is
+right-handed then q is positive for right-handed field winding while if
+:math:`(\rho,\theta,\varphi)` is left-handed then q is positive for left-handed
+winding).  However, some tools define q as always positive so the paper warns
+against using it as a consistency check.
+
+Note the table of conventions in https://crppwww.epfl.ch/~sauter/cocos/
 
 SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 
@@ -330,10 +360,11 @@ def read(
         bdry_lim_fmt = _bdry_lim_fmt
 
     # TODO Should try to extract shot/time data from header comment
-    _, _, nx, ny = read_line(fh, header_fmt)
+    # MW: at least give it to a human to read
+    comment, integer, nx, ny = read_line(fh, header_fmt)
 
     # Dictionary to hold result
-    data = {"nx": nx, "ny": ny}
+    data = {"comment": comment, "int": integer, "nx": nx, "ny": ny}
 
     # Read first four lines
     floats = read_array(20, fh, data_fmt)
