@@ -14,8 +14,8 @@ from textwrap import dedent
 from typing import Dict, Optional, TextIO, Union
 
 import numpy as np
-from numpy.typing import ArrayLike
 
+from ._typing import ArrayLike
 from ._fileutils import read_array, write_array, write_line
 
 

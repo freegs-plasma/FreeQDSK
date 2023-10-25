@@ -15,7 +15,8 @@ from typing import Any, Generator, Iterable, List, TextIO, Union
 
 import fortranformat as ff
 import numpy as np
-from numpy.typing import ArrayLike
+
+from ._typing import FloatArray, ArrayLike
 
 
 def f2s(f: float) -> str:
@@ -145,7 +146,7 @@ def write_1d(values: Iterable[Any], out: ChunkOutput) -> None:
     out.newline()
 
 
-def write_2d(values: ArrayLike, out: ChunkOutput) -> None:
+def write_2d(values: FloatArray, out: ChunkOutput) -> None:
     r"""
     Writes a 2D array to a ChunkOutput file handle.
 
