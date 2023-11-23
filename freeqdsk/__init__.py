@@ -1,7 +1,10 @@
 __all__ = ["geqdsk", "aeqdsk", "peqdsk"]
 
-from importlib.metadata import version, PackageNotFoundError
-
+try:
+    from importlib.metadata import version, PackageNotFoundError
+except ModuleNotFoundError:
+    # Python 3.7
+    from importlib_metadata import version, PackageNotFoundError
 try:
     __version__ = version(__name__)
 except PackageNotFoundError:

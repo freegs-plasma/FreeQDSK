@@ -29,8 +29,13 @@ atomic number, charge (in units of :math:`e`), and atomic mass of the ions::
 
 import csv
 import re
-from typing import Dict, Generator, List, TextIO, Tuple, TypedDict, Union
+from typing import Dict, Generator, List, TextIO, Tuple, Union
 
+try:
+    from typing import TypedDict
+except ImportError:
+    # python 3.7
+    from typing_extensions import TypedDict
 import numpy as np
 
 
