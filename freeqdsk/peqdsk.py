@@ -80,8 +80,16 @@ class PEQDSKDict(TypedDict):
 
 _newline = "\n"
 
+class _CsvFmtKwargs(TypedDict):
+    """Type hints for ``csv`` readers to silence mypy"""
+    delimiter:str
+    skipinitialspace:bool
+    quoting:int
+    lineterminator:str
+
+
 #: keywords to pass to ``csv.reader/writer``
-_fmt_kwargs = {
+_fmt_kwargs : _CsvFmtKwargs = {
     "delimiter": " ",
     "skipinitialspace": True,
     "quoting": csv.QUOTE_NONNUMERIC,
