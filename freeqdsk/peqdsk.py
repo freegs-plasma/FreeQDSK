@@ -72,7 +72,7 @@ class PEQDSKDict(TypedDict):
     """
     #: Dict of kinetics profiles. The names of each profile are used as keys, while
     #: the data is presented in a ``ProfileDict``.
-    profile: Dict[str, ProfileDict]
+    profiles: Dict[str, ProfileDict]
 
     #: List of species.
     species: List[SpeciesDict]
