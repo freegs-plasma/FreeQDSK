@@ -6,6 +6,12 @@
 Read and write G-EQDSK, A-EQDSK, and P-EQDSK file formats, which are used to describe
 the tokamak fusion devices.
 
+It has more features than other implementations, including aeqdsk and peqdsk formats,
+support for COCOS numbers != 1, some customisation of the header format.
+
+It aims to be a well maintained community package, allowing to replace custom 
+implementations by a feature complete, freely available implementation.
+
 ## Installation
 
 To install, you may need to update `pip` to the latest version:
