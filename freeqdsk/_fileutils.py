@@ -6,6 +6,7 @@ SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 SPDX-License-Identifier: MIT
 
 """
+
 from __future__ import annotations  # noqa
 
 import re
@@ -15,7 +16,8 @@ from typing import Any, Generator, Iterable, List, TextIO, Union
 
 import fortranformat as ff
 import numpy as np
-from numpy.typing import ArrayLike
+
+from ._typing import FloatArray, ArrayLike
 
 
 def f2s(f: float) -> str:
@@ -145,7 +147,7 @@ def write_1d(values: Iterable[Any], out: ChunkOutput) -> None:
     out.newline()
 
 
-def write_2d(values: ArrayLike, out: ChunkOutput) -> None:
+def write_2d(values: FloatArray, out: ChunkOutput) -> None:
     r"""
     Writes a 2D array to a ChunkOutput file handle.
 
@@ -245,7 +247,9 @@ def read_line(fh: TextIO, fmt: str) -> List[Any]:
         return ff.FortranRecordReader(fmt).read(line)
 
 
-def read_array(shape: Union[int, str, ArrayLike], fh: TextIO, fmt: str) -> np.ndarray:
+def read_array(
+    shape: Union[int, str, ArrayLike, tuple[int, int]], fh: TextIO, fmt: str
+) -> np.ndarray:
     r"""
     Reads from a Fortran formatted ASCII data file. It is assumed that the array is
     flattened and stored in Fortran order (column-major). Information is read from a
@@ -335,7 +339,7 @@ def write_line(data: Iterable[Any], fh: TextIO, fmt: str) -> None:
     fh.write("\n")
 
 
-def write_array(arr: ArrayLike, fh: TextIO, fmt: str) -> None:
+def write_array(arr: Union[ArrayLike, tuple[int, ...]], fh: TextIO, fmt: str) -> None:
     r"""
     Writes to a Fortran formatted ASCII data file. The provided array is flattened and
     written in Fortran order (column-major). Information is written to a file handle

@@ -139,11 +139,11 @@ from __future__ import annotations  # noqa
 
 import warnings
 from datetime import date
-from typing import Dict, Optional, TextIO, Union
+from typing import Dict, Optional, TextIO, Union, TypedDict
 
 import numpy as np
-from numpy.typing import ArrayLike
 
+from ._typing import FloatArray
 from ._fileutils import read_array, read_line, write_array, write_line
 
 
@@ -182,8 +182,37 @@ _float_keys = (
 )
 
 
+class GeqdskDataDict(TypedDict):
+    """Names and expected types of keys in dict of G-EQDSK data"""
+
+    nx: int
+    ny: int
+    rdim: float
+    zdim: float
+    rleft: float
+    zmin: float
+    rmagx: float
+    zmagx: float
+    simagx: float
+    bcentr: float
+    cpasma: float
+    fpol: FloatArray
+    pres: FloatArray
+    ffprime: FloatArray
+    pprime: FloatArray
+    psi: FloatArray
+    qpsi: FloatArray
+
+    nbdry: int
+    nlim: int
+    rbdry: FloatArray
+    zbdry: FloatArray
+    rlim: FloatArray
+    zlim: FloatArray
+
+
 def write(
-    data: Dict[str, Union[int, float, ArrayLike]],
+    data: GeqdskDataDict,
     fh: TextIO,
     label: Optional[str] = None,
     shot: int = 0,
@@ -251,22 +280,26 @@ def write(
             if grid in ("ffprime", "pprime"):
                 continue
             raise ValueError(f"Grid {grid} not in data")
-        if np.shape(data[grid]) != (nx,):
-            raise ValueError(f"Grid {grid} should have shape {(nx,)}")
+        if (_grid_shape := np.shape(data[grid])) != (nx,):  # type: ignore
+            raise ValueError(f"Expected shape {(nx,)} for {grid}, got {_grid_shape}")
     if "psi" not in data:
         raise ValueError("Grid psi not in data")
-    if np.shape(data["psi"]) != (nx, ny):
-        raise ValueError(f"Grid psi should have shape {(nx, ny)}")
+    if (_psi_shape := np.shape(data["psi"])) != (nx, ny):
+        raise ValueError(f"Expected shape {(nx, ny)} for psi, got {_psi_shape}")
     if nbdry > 0:
-        if np.shape(data["rbdry"]) != (nbdry,):
+        if (_rbdry_shape := np.shape(data["rbdry"])) != (nbdry,):
             raise ValueError("rbdry should have length nbdry")
-        if np.shape(data["rbdry"]) != np.shape(data["zbdry"]):
-            raise ValueError("rbdry and zbdry should have the same length")
+        if _rbdry_shape != (_zbdry_shape := np.shape(data["zbdry"])):
+            raise ValueError(
+                f"rbdry and zbdry should have the same length (got {_rbdry_shape} != {_zbdry_shape}"
+            )
     if nlim > 0:
-        if np.shape(data["rlim"]) != (nlim,):
-            raise ValueError("rlim should have length nlim")
-        if np.shape(data["rlim"]) != np.shape(data["zlim"]):
-            raise ValueError("rlim and zlim should have the same length")
+        if (_rlim := np.shape(data["rlim"])) != (nlim,):
+            raise ValueError(f"rlim (={_rlim}) should have length nlim (={nlim})")
+        if _rlim != (_zlim := np.shape(data["zlim"])):
+            raise ValueError(
+                f"rlim (={_rlim}) and zlim (={_zlim}) should have the same length"
+            )
 
     # Write header
     # TODO There is no rigorous standard for GEQDSK headers. As FreeQDSK is derived from
@@ -291,7 +324,7 @@ def write(
 
     # The next four lines contain floats in the order specified by _float_keys
     # If an entry in _float_keys is None, that float is a dummy value and is set to 0.0
-    floats = [(0.0 if k is None else data[k]) for k in _float_keys]
+    floats = [(0.0 if k is None else data[k]) for k in _float_keys]  # type: ignore
     write_array(floats, fh, data_fmt)
 
     # Write each grid
