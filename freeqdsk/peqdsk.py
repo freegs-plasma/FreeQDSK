@@ -38,6 +38,7 @@ class ProfileDict(TypedDict):
     r"""
     TypedDict describing an individual kinetics profile.
     """
+
     #: :math:`\psi_N` grid, where :math:`\psi_N=0` on the magnetic axis and
     #: :math:`\psi_N=1` on the last closed flux surface
     psinorm: np.ndarray
@@ -56,6 +57,7 @@ class SpeciesDict(TypedDict):
     r"""
     TypedDict describing each species.
     """
+
     #: Atomic number
     N: float
 
@@ -70,6 +72,7 @@ class PEQDSKDict(TypedDict):
     r"""
     TypedDict returned by the read function.
     """
+
     #: Dict of kinetics profiles. The names of each profile are used as keys, while
     #: the data is presented in a ``ProfileDict``.
     profiles: Dict[str, ProfileDict]
@@ -80,16 +83,18 @@ class PEQDSKDict(TypedDict):
 
 _newline = "\n"
 
+
 class _CsvFmtKwargs(TypedDict):
     """Type hints for ``csv`` readers to silence mypy"""
-    delimiter:str
-    skipinitialspace:bool
-    quoting:int
-    lineterminator:str
+
+    delimiter: str
+    skipinitialspace: bool
+    quoting: int
+    lineterminator: str
 
 
 #: keywords to pass to ``csv.reader/writer``
-_fmt_kwargs : _CsvFmtKwargs = {
+_fmt_kwargs: _CsvFmtKwargs = {
     "delimiter": " ",
     "skipinitialspace": True,
     "quoting": csv.QUOTE_NONNUMERIC,

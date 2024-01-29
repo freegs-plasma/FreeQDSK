@@ -6,6 +6,7 @@ SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 SPDX-License-Identifier: MIT
 
 """
+
 from __future__ import annotations  # noqa
 
 import re
