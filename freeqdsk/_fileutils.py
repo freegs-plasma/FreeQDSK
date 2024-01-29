@@ -247,7 +247,9 @@ def read_line(fh: TextIO, fmt: str) -> List[Any]:
         return ff.FortranRecordReader(fmt).read(line)
 
 
-def read_array(shape: Union[int, str, ArrayLike], fh: TextIO, fmt: str) -> np.ndarray:
+def read_array(
+    shape: Union[int, str, ArrayLike, tuple[int, int]], fh: TextIO, fmt: str
+) -> np.ndarray:
     r"""
     Reads from a Fortran formatted ASCII data file. It is assumed that the array is
     flattened and stored in Fortran order (column-major). Information is read from a
@@ -337,7 +339,7 @@ def write_line(data: Iterable[Any], fh: TextIO, fmt: str) -> None:
     fh.write("\n")
 
 
-def write_array(arr: ArrayLike, fh: TextIO, fmt: str) -> None:
+def write_array(arr: Union[ArrayLike, tuple[int, ...]], fh: TextIO, fmt: str) -> None:
     r"""
     Writes to a Fortran formatted ASCII data file. The provided array is flattened and
     written in Fortran order (column-major). Information is written to a file handle
