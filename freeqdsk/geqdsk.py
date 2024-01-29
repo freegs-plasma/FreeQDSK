@@ -251,22 +251,26 @@ def write(
             if grid in ("ffprime", "pprime"):
                 continue
             raise ValueError(f"Grid {grid} not in data")
-        if np.shape(data[grid]) != (nx,):
-            raise ValueError(f"Grid {grid} should have shape {(nx,)}")
+        if (_grid_shape := np.shape(data[grid])) != (nx,):
+            raise ValueError(f"Expected shape {(nx,)} for {grid}, got {_grid_shape}")
     if "psi" not in data:
         raise ValueError("Grid psi not in data")
-    if np.shape(data["psi"]) != (nx, ny):
-        raise ValueError(f"Grid psi should have shape {(nx, ny)}")
+    if (_psi_shape := np.shape(data["psi"])) != (nx, ny):
+        raise ValueError(f"Expected shape {(nx, ny)} for psi, got {_psi_shape}")
     if nbdry > 0:
-        if np.shape(data["rbdry"]) != (nbdry,):
+        if (_rbdry_shape := np.shape(data["rbdry"])) != (nbdry,):
             raise ValueError("rbdry should have length nbdry")
-        if np.shape(data["rbdry"]) != np.shape(data["zbdry"]):
-            raise ValueError("rbdry and zbdry should have the same length")
+        if _rbdry_shape != (_zbdry_shape := np.shape(data["zbdry"])):
+            raise ValueError(
+                f"rbdry and zbdry should have the same length (got {_rbdry_shape} != {_zbdry_shape}"
+            )
     if nlim > 0:
-        if np.shape(data["rlim"]) != (nlim,):
-            raise ValueError("rlim should have length nlim")
-        if np.shape(data["rlim"]) != np.shape(data["zlim"]):
-            raise ValueError("rlim and zlim should have the same length")
+        if (_rlim := np.shape(data["rlim"])) != (nlim,):
+            raise ValueError(f"rlim (={_rlim}) should have length nlim (={nlim})")
+        if _rlim != (_zlim := np.shape(data["zlim"])):
+            raise ValueError(
+                f"rlim (={_rlim}) and zlim (={_zlim}) should have the same length"
+            )
 
     # Write header
     # TODO There is no rigorous standard for GEQDSK headers. As FreeQDSK is derived from
