@@ -143,7 +143,7 @@ from typing import Dict, Optional, TextIO, Union, TypedDict
 
 import numpy as np
 
-from ._typing import ArrayLike, FloatArray
+from ._typing import FloatArray
 from ._fileutils import read_array, read_line, write_array, write_line
 
 
