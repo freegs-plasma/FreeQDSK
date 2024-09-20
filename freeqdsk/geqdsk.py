@@ -10,22 +10,25 @@ make use of G-EQDSK files include, but are not limited to:
 
 G-EQDSK files begin with a header line containing the following information:
 
-- ``comment`` A comment 48 characters in length. This normally includes information such as the
-  software used to generate the file, the date of creation, a shot number, and the
-  time frame within the shot. Unfortunately, the format of this line is not
-  rigorously defined, so each code will tend to define it differently. FreeQDSK
-  currently assumes a FreeGS-style comment, but this may be expanded to other
-  comment styles in a future update.
-- ``int`` A mysterious integer of unknown purpose, with a width of 4 characters.
-- ``nx`` The number of points in the R direction, expressed as an integer with a width of
-  four characters.
-- ``ny`` The number of points in the Z direction, expressed as an integer with a width of
-  four characters.
+- ``comment``: This normally includes information such as the software used to
+  generate the file, the date of creation, a shot number, and the time frame
+  within the shot. Unfortunately, the format of this line is not rigorously
+  defined, so each code will tend to define it differently.
+- ``int``: Typically the shot number for experiments, otherwise not used, but
+  usually required to be present
+- ``nx``: The number of points in the R direction
+- ``ny``: The number of points in the Z direction
 
+FreeQDSK will be quite liberal when reading the header line, as long
+as it ends with three space-separated integers. In particlar, ``nx`` and ``ny``
+are required to correctly parse the rest of the file.
 
-The Fortran format for the header can be expressed as ``(a48,3i4)``. This is followed
-by 4 lines of floats describing a tokamak plasma equilibrium. Each line contains 5
-floats, following the Fortran format ``(5e16.9)``. These floats are:
+When writing files, FreeQDSK will write the header with the Fortran format
+``(a48,3i4)`` by default.
+
+After the header, there are 4 lines of floats describing a tokamak plasma
+equilibrium. Each line contains 5 floats, following the Fortran format
+``(5e16.9)``. These floats are:
 
 ====== ====== ====== ====== ======
 rdim   zdim   rcentr rleft  zmid
@@ -360,7 +363,6 @@ def read(
 
     Parameters
     ----------
-
     fh:
         File handle to read from. Should be opened in a text read mode, i.e.
         ``open(filename, "r")``.
@@ -370,8 +372,14 @@ def read(
         :math:`\psi` is divided by :math:`2\pi`, and otherwise it is left unchanged.
         See `Sauter et al, 2013 <https://doi.org/10.1016/j.cpc.2012.09.010>`_.
     header_fmt:
-        Fortran IO format for G-EQDSK header line. If not provided, uses ``(a48,3i4)``,
-        corresponding to a comment, a dummy int, nx, and ny.
+        Fortran IO format for G-EQDSK header line. By default, tries to be
+        liberal with parsing the header, but it is expected to be in the form:
+
+        .. code:: text
+
+            comment integer nx ny
+
+        where ``comment`` is a string, and ``integer, nx, ny`` are all integers.
     data_fmt:
         Fortran IO format for G-EQDSK data. If not provided, uses ``(5e16.9)``.
     bdr_lim_fmt:
@@ -385,16 +393,24 @@ def read(
         include 'rmagx', 'zmagx', 'simagx' and 'sibdry'. The value returned will be
         the last found.
     """
-    if header_fmt is None:
-        header_fmt = _header_fmt
+
     if data_fmt is None:
         data_fmt = _data_fmt
     if bdry_lim_fmt is None:
         bdry_lim_fmt = _bdry_lim_fmt
 
+    if header_fmt is None:
+        # Read the header as a single string, and then split off three integers
+        # from the right. This should work with output from most codes
+        header = read_line(fh, '(a)')[0]
+        comment, integer_, nx_, ny_ = header.rsplit(maxsplit=3)
+        integer = int(integer_)
+        nx = int(nx_)
+        ny = int(ny_)
+    else:
+        comment, integer, nx, ny = read_line(fh, header_fmt)
+
     # TODO Should try to extract shot/time data from header comment
-    # MW: at least give it to a human to read
-    comment, integer, nx, ny = read_line(fh, header_fmt)
 
     # Dictionary to hold result
     data = {"comment": comment, "int": integer, "nx": nx, "ny": ny}
