@@ -4,6 +4,7 @@ SPDX-FileCopyrightText: © 2016 Ben Dudson, University of York.
 SPDX-License-Identifier: MIT
 """
 
+from dataclasses import asdict
 from io import StringIO
 from difflib import unified_diff
 from pathlib import Path
@@ -170,7 +171,7 @@ def test_write(path, tmp_path):
 def test_write_unrecoverable_missing_data(tmp_path):
     # read in test data
     with open(_data_path / "test_1.geqdsk") as f:
-        data = geqdsk.read(f)
+        data = asdict(geqdsk.read(f))
 
     # Delete necessary data
     data.pop("psi")
@@ -186,7 +187,7 @@ def test_write_unrecoverable_missing_data(tmp_path):
 def test_write_recoverable_missing_data(tmp_path):
     # read in test data
     with open(_data_path / "test_1.geqdsk") as f:
-        data = geqdsk.read(f)
+        data = asdict(geqdsk.read(f))
 
     # Delete superfluous data
     data.pop("nx")
