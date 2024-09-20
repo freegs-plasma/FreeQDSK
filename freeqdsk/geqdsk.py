@@ -402,7 +402,7 @@ def read(
     if header_fmt is None:
         # Read the header as a single string, and then split off three integers
         # from the right. This should work with output from most codes
-        header = read_line(fh, '(a)')[0]
+        header = read_line(fh, "(a)")[0]
         comment, integer_, nx_, ny_ = header.rsplit(maxsplit=3)
         integer = int(integer_)
         nx = int(nx_)
