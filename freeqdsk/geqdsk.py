@@ -141,8 +141,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations  # noqa
 
 import warnings
+from dataclasses import asdict, dataclass, field
 from datetime import date
-from typing import Dict, Optional, TextIO, Union, TypedDict
+from typing import Any, Optional, TextIO, TypedDict, cast
 
 import numpy as np
 
@@ -185,6 +186,162 @@ _float_keys = (
 )
 
 
+def _synonym(canonical: str) -> property:
+    """Set a property which is just a synonym for another attribute"""
+
+    return property(
+        lambda self: getattr(self, canonical),
+        lambda self, value: setattr(self, canonical, value),
+        doc=f"Synonym for {canonical}",
+    )
+
+
+@dataclass()
+class GEQDSKFile:
+    r"""G-EQDSK equilibrium.
+
+    Includes some common synonyms for the "canonical" names, as well as some
+    more human-readable ones. In the *Attributes* section below, canonical names
+    are listed first.
+
+    When creating an instance, if keyword arguments are used, they should be the
+    canonical names.
+
+    Attributes
+    ----------
+    comment:
+        Header comment
+    shot:
+        Header shot number
+    nx, nw, nr:
+        Number of radial points
+    ny, nh, nz:
+        Number of vertical points
+    rdim:
+        Width of computational domain in R direction, float [meter]
+    zdim:
+        Height of computational domain in Z direction, float [meter]
+    rcentr:
+        Reference value of R, float [meter]
+    rleft:
+        R at left (inner) boundary, float [meter]
+    zmid:
+        Z at middle of domain, float [meter]
+    rmagx, rmaxis:
+        R at magnetic axis (0-point), float [meter]
+    zmagx, zmaxis:
+        Z at magnetic axis (0-point), float [meter]
+    simagx, psi_axis:
+        Poloidal flux :math:`\psi` at magnetic axis, float [weber / radian]
+    sibdry, psi_boundary:
+        Poloidal flux :math:`\psi` at plasma boundary, float [weber / radian]
+    bcentr:
+        Vacuum toroidal magnetic field at rcentr, float [tesla]
+    cpasma, current:
+        Plasma current, float [ampere]
+    fpol:
+        Poloidal current function :math:`F(\psi)=RB_t`, 1D array [meter * tesla]
+    pres, pressure:
+        Plasma pressure :math:`p(\psi)`, 1D array [pascal]
+    ffprime:
+        :math:`FF'(\psi)`, 1D array [meter**2 * tesla**2 * radian / weber]
+    pprime:
+        :math:`p'(\psi)`, 1D array [pascal * radian / weber]
+    psi, f, psirz:
+         Poloidal flux :math:`\psi`, 2D array [weber / radian]
+    qpsi:
+        Safety factor :math:`q(\psi)`, 1D array [dimensionless]
+    nbdry, nbbbs:
+        Number of points in the boundary grid, int
+    nlim, limitr:
+        Number of points in the limiter grid, int
+    rbdry, rbbbs:
+        R of boundary points, 1D array [meter]
+    zbdry, zbbbs:
+        Z of boundary points, 1D array [meter]
+    rlim:
+        R of limiter points, 1D array [meter]
+    zlim:
+        Z of limiter points, 1D array [meter]
+
+    Examples
+    --------
+
+    Variables can be accessed with either the attribute dot syntax or ``dict``
+    item access. For example, the poloidal flux on the magnetic axis can be
+    accessed via any one of the following:
+
+    >>> gfile = GEQDSKFile(...)
+    >>> print(gfile["simagx"])
+    >>> print(gfile.simagx)
+    >>> print(gfile.psi_axis)
+
+    """
+
+    comment: str
+    shot: int
+    nx: int
+    ny: int
+    rdim: float
+    zdim: float
+    rcentr: float
+    rleft: float
+    zmid: float
+    rmagx: float
+    zmagx: float
+    simagx: float
+    sibdry: float
+    bcentr: float
+    cpasma: float
+    fpol: FloatArray
+    pres: FloatArray
+    ffprime: FloatArray
+    pprime: FloatArray
+    psi: FloatArray
+    qpsi: FloatArray
+    nbdry: int
+    nlim: int
+    rbdry: Optional[FloatArray] = None
+    zbdry: Optional[FloatArray] = None
+    rlim: Optional[FloatArray] = None
+    zlim: Optional[FloatArray] = None
+    r_grid: FloatArray = field(init=False)
+    z_grid: FloatArray = field(init=False)
+
+    def __post_init__(self):
+        # Create grids for plotting etc
+        r = self.rleft + self.rdim * np.arange(self.nx) / (self.nx - 1)
+        z = (self.zmid - 0.5 * self.zdim) + self.zdim * np.arange(self.ny) / (
+            self.ny - 1
+        )
+        self.r_grid, self.z_grid = np.meshgrid(r, z, indexing="ij")
+
+    nw = _synonym("nx")
+    nr = _synonym("nx")
+    nh = _synonym("ny")
+    nz = _synonym("ny")
+    rmaxis = _synonym("rmagx")
+    zmaxis = _synonym("zmagx")
+    psi_axis = _synonym("simagx")
+    psi_boundary = _synonym("sibdry")
+    pressure = _synonym("pres")
+    current = _synonym("cpasma")
+    f = _synonym("psi")
+    psirz = _synonym("psi")
+    limitr = _synonym("nlim")
+    xlim = _synonym("rlim")
+    ylim = _synonym("zlim")
+    nbbbs = _synonym("nbdry")
+    rbbbs = _synonym("rbdry")
+    zbbbs = _synonym("zbdry")
+
+    def __getitem__(self, name: str):
+        return getattr(self, name)
+
+    def __setitem__(self, name: str, value: Any):
+        return setattr(self, name, value)
+
+
 class GeqdskDataDict(TypedDict):
     """Names and expected types of keys in dict of G-EQDSK data"""
 
@@ -215,7 +372,7 @@ class GeqdskDataDict(TypedDict):
 
 
 def write(
-    data: GeqdskDataDict,
+    data: GEQDSKFile | GeqdskDataDict,
     fh: TextIO,
     label: Optional[str] = None,
     shot: int = 0,
@@ -272,6 +429,14 @@ def write(
         data_fmt = _data_fmt
     if bdry_lim_fmt is None:
         bdry_lim_fmt = _bdry_lim_fmt
+
+    if isinstance(data, GEQDSKFile):
+        # Convert to dict just so we handle the rest of the function the
+        # same. Although, if we do have a `GEQDSKFile`, then we should already
+        # know we have everything we need
+        data: GeqdskDataDict = asdict(data)  # type: ignore[no-redef]
+
+    data = cast(GeqdskDataDict, data)
 
     # Get dimensions and check data is correct
     nx = data.get("nx", np.shape(data["psi"])[0])
@@ -356,7 +521,7 @@ def read(
     header_fmt: Optional[str] = None,
     data_fmt: Optional[str] = None,
     bdry_lim_fmt: Optional[str] = None,
-) -> Dict[str, Union[int, float, np.ndarray]]:
+) -> GEQDSKFile:
     r"""
     Read a G-EQDSK formatted equilibrium file.
     The format is specified `here <https://fusion.gat.com/theory/Efitgeqdsk>`_.
@@ -413,7 +578,7 @@ def read(
     # TODO Should try to extract shot/time data from header comment
 
     # Dictionary to hold result
-    data = {"comment": comment, "int": integer, "nx": nx, "ny": ny}
+    data = {"comment": comment, "shot": integer, "nx": nx, "ny": ny}
 
     # Read first four lines
     floats = read_array(20, fh, data_fmt)
@@ -456,4 +621,4 @@ def read(
         lim = read_array(2 * nlim, fh, data_fmt)
         data["rlim"], data["zlim"] = lim[0::2], lim[1::2]
 
-    return data
+    return GEQDSKFile(**data)
