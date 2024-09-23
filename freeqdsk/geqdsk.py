@@ -297,10 +297,10 @@ class GEQDSKFile:
     qpsi: FloatArray
     nbdry: int
     nlim: int
-    rbdry: FloatArray | None = None
-    zbdry: FloatArray | None = None
-    rlim: FloatArray | None = None
-    zlim: FloatArray | None = None
+    rbdry: Optional[FloatArray] = None
+    zbdry: Optional[FloatArray] = None
+    rlim: Optional[FloatArray] = None
+    zlim: Optional[FloatArray] = None
 
     def __post_init__(self):
         r = np.zeros((self.nx, self.ny), float)
