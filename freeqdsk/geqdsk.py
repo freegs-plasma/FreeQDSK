@@ -189,6 +189,7 @@ def _synonym(canonical: str) -> property:
     return property(
         lambda self: getattr(self, canonical),
         lambda self, value: setattr(self, canonical, value),
+        doc=f"Synonym for {canonical}",
     )
 
 
