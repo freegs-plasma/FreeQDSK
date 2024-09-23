@@ -138,7 +138,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations  # noqa
 
 import warnings
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import date
 from typing import Any, Optional, TextIO, TypedDict, cast
 
@@ -301,18 +301,16 @@ class GEQDSKFile:
     zbdry: Optional[FloatArray] = None
     rlim: Optional[FloatArray] = None
     zlim: Optional[FloatArray] = None
+    r_grid: FloatArray = field(init=False)
+    z_grid: FloatArray = field(init=False)
 
     def __post_init__(self):
-        r = np.zeros((self.nx, self.ny), float)
-        z = np.zeros((self.nx, self.ny), float)
-
-        for i in range(0, self.nx):
-            for j in range(0, self.ny):
-                r[i, j] = self.rleft + self.rdim * i / (self.nx - 1)
-                z[i, j] = (self.zmid - 0.5 * self.zdim) + self.zdim * j / (self.ny - 1)
-
-        self.r_grid = r
-        self.z_grid = z
+        # Create grids for plotting etc
+        r = self.rleft + self.rdim * np.arange(self.nx) / (self.nx - 1)
+        z = (self.zmid - 0.5 * self.zdim) + self.zdim * np.arange(self.ny) / (
+            self.ny - 1
+        )
+        self.r_grid, self.z_grid = np.meshgrid(r, z, indexing="ij")
 
     nw = _synonym("nx")
     nr = _synonym("nx")
