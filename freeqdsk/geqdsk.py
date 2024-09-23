@@ -140,7 +140,7 @@ from __future__ import annotations  # noqa
 import warnings
 from dataclasses import asdict, dataclass
 from datetime import date
-from typing import Any, Optional, TextIO, TypedDict
+from typing import Any, Optional, TextIO, TypedDict, cast
 
 import numpy as np
 
@@ -432,7 +432,9 @@ def write(
         # Convert to dict just so we handle the rest of the function the
         # same. Although, if we do have a `GEQDSKFile`, then we should already
         # know we have everything we need
-        data = asdict(data)
+        data: GeqdskDataDict = asdict(data)  # type: ignore[no-redef]
+
+    data = cast(GeqdskDataDict, data)
 
     # Get dimensions and check data is correct
     nx = data.get("nx", np.shape(data["psi"])[0])
