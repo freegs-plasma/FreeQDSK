@@ -140,7 +140,7 @@ from __future__ import annotations  # noqa
 import warnings
 from dataclasses import asdict, dataclass
 from datetime import date
-from typing import Optional, TextIO, TypedDict
+from typing import Any, Optional, TextIO, TypedDict
 
 import numpy as np
 
@@ -336,8 +336,8 @@ class GEQDSKFile:
     def __getitem__(self, name: str):
         return getattr(self, name)
 
-    def __setitem__(self, name: str, value):
-        return setattr(self, name, any)
+    def __setitem__(self, name: str, value: Any):
+        return setattr(self, name, value)
 
 
 class GeqdskDataDict(TypedDict):

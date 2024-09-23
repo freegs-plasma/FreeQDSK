@@ -13,7 +13,7 @@ import fortranformat as ff
 import pytest
 import numpy as np
 from numpy.random import rand
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 from freeqdsk import geqdsk
 
@@ -299,3 +299,34 @@ def test_read_missing_bdry_lim(tmp_path):
 
     with open(out) as f, pytest.raises(EOFError):
         geqdsk.read(f)
+
+
+def test_synonyms():
+    with open(_data_path / "test_1.geqdsk") as f:
+        data = geqdsk.read(f)
+
+    assert_array_equal(data.current, data.cpasma)
+    assert_array_equal(data.pressure, data.pres)
+
+
+def test_getitem():
+    with open(_data_path / "test_1.geqdsk") as f:
+        data = geqdsk.read(f)
+
+    assert_array_equal(data["cpasma"], data.cpasma)
+    # getitem and synonym
+    assert_array_equal(data["pressure"], data.pres)
+
+
+def test_setitem():
+    with open(_data_path / "test_1.geqdsk") as f:
+        data = geqdsk.read(f)
+
+    data["cpasma"] = 4.0
+    assert data["cpasma"] == 4.0
+
+    data.pres = 2.0
+    assert data.pres == 2.0
+
+    data["limitr"] = 12
+    assert data.nlim == 12
