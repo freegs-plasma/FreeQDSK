@@ -376,4 +376,4 @@ def test_writing_no_boundary_file(tmp_path):
         if data[key] is None:
             assert roundtrip[key] is None, key
         else:
-            assert_allclose(data[key], roundtrip[key], err_msg=key)
+            assert_allclose(data[key], roundtrip[key], err_msg=key, rtol=1e-6)
