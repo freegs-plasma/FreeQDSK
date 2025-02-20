@@ -441,8 +441,10 @@ def write(
     # Get dimensions and check data is correct
     nx = data.get("nx", np.shape(data["psi"])[0])
     ny = data.get("ny", np.shape(data["psi"])[1])
-    nbdry = data.get("nbdry", len(data.get("rbdry", [])))
-    nlim = data.get("nlim", len(data.get("rlim", [])))
+    rbdry = data.get("rbdry")
+    nbdry = data.get("nbdry", len(rbdry) if rbdry is not None else 0)
+    rlim = data.get("rlim")
+    nlim = data.get("nlim", len(rlim) if rlim is not None else 0)
     for grid in ("fpol", "pres", "ffprime", "pprime", "qpsi"):
         if grid not in data:
             if grid in ("ffprime", "pprime"):
