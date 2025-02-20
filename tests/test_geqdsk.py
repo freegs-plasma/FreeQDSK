@@ -330,3 +330,50 @@ def test_setitem():
 
     data["limitr"] = 12
     assert data.nlim == 12
+
+
+def test_writing_no_boundary_file(tmp_path):
+    """https://github.com/freegs-plasma/FreeQDSK/issues/26"""
+
+    nx = 16
+    ny = 16
+    data = geqdsk.GEQDSKFile(
+        comment="Noboundary test",
+        shot=0,
+        nx=nx,
+        ny=ny,
+        rdim=2 + rand(),
+        zdim=1 + rand(),
+        rcentr=1.5 + 0.1 * rand(),
+        bcentr=2 + rand(),
+        rleft=rand(),
+        zmid=0.1 * rand(),
+        rmagx=1 + rand(),
+        zmagx=0.1 + 0.05 * (1 - rand()),
+        simagx=-rand(),
+        sibdry=rand(),
+        cpasma=1e6 * (1 + rand()),
+        fpol=rand(nx),
+        pres=rand(nx),
+        qpsi=rand(nx),
+        psi=rand(nx, ny),
+        nbdry=0,
+        nlim=0,
+        ffprime=np.zeros(nx),
+        pprime=np.zeros(nx),
+    )
+
+    filename = tmp_path / "nobdry.geqdsk"
+    with filename.open("w") as f:
+        geqdsk.write(data, f)
+
+    with filename.open() as f:
+        roundtrip = geqdsk.read(f)
+
+    for key in asdict(data):
+        if key in ("comment", "shot"):
+            continue
+        if data[key] is None:
+            assert roundtrip[key] is None, key
+        else:
+            assert_allclose(data[key], roundtrip[key], err_msg=key)
